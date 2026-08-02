@@ -4,10 +4,13 @@
   xmlns:cdv="http://cordova.apache.org/ns/1.0">
 
   <name>OrganizaGrana</name>
-  <description>Gestao Financeira Pessoal 100% offline</description>
-  <author email="dev@salescode.com" href="https://salescode.com">Salescode</author>
+  <description>Gestao Financeira Pessoal</description>
+  <author email="suporte@salescode.dev" href="https://www.salescode.dev">Sales. Dev</author>
 
   <content src="index.html" />
+
+  <!-- Ícone do Aplicativo (Global) -->
+  <icon src="public/img/logo.png" />
 
   <!-- Permite navegacao local -->
   <allow-navigation href="about:*" />
@@ -24,20 +27,31 @@
   <preference name="DisallowOverscroll" value="true" />
   <preference name="KeyboardDisplayRequiresUserAction" value="false" />
 
-  <!-- Plugin de SQLite -->
+  <!-- Preferências de Tela de Carregamento Nativa (Android 12+ Modern API) -->
+  <preference name="SplashScreen" value="screen" />
+  <preference name="SplashScreenDelay" value="2000" />
+  <preference name="AutoHideSplashScreen" value="true" />
+  <preference name="FadeSplashScreen" value="true" />
+  <preference name="FadeSplashScreenDuration" value="300" />
+  <preference name="ShowSplashScreenSpinner" value="false" />
+  <preference name="AndroidWindowSplashScreenAnimatedIcon" value="public/img/logo.png" />
+  <preference name="AndroidWindowSplashScreenBackground" value="#6C5CE7" />
+
+  <!-- Plugins do Cordova -->
   <plugin name="cordova-sqlite-storage" spec="latest" />
-
-  <!-- Plugin de notificacoes locais -->
   <plugin name="cordova-plugin-local-notification" spec="latest" />
-
-  <!-- Plugin de informacoes do dispositivo -->
   <plugin name="cordova-plugin-device" spec="latest" />
-
-  <!-- Plugins de Arquivo e Compartilhamento Nativo -->
   <plugin name="cordova-plugin-file" spec="latest" />
   <plugin name="cordova-plugin-x-socialsharing" spec="latest" />
 
-  <!-- Permissoes Android sao adicionadas automaticamente pelos plugins -->
-  <!-- cordova-plugin-local-notification ja inclui RECEIVE_BOOT_COMPLETED, VIBRATE e WAKE_LOCK -->
+  <!-- Configurações para plataforma Android -->
+  <platform name="android">
+    <icon src="public/img/logo.png" density="ldpi" />
+    <icon src="public/img/logo.png" density="mdpi" />
+    <icon src="public/img/logo.png" density="hdpi" />
+    <icon src="public/img/logo.png" density="xhdpi" />
+    <icon src="public/img/logo.png" density="xxhdpi" />
+    <icon src="public/img/logo.png" density="xxxhdpi" />
+  </platform>
 
 </widget>
