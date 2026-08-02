@@ -1,0 +1,38 @@
+/* Dashboard Page */
+.dashboard-page {
+  background: var(--color-bg);
+}
+
+.dashboard-header {
+  background: var(--color-surface);
+  padding: calc(var(--space-4) + env(safe-area-inset-top, 20px)) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-shrink: 0;
+}
+.dashboard-header__greeting {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+.dashboard-header__period {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-extrabold);
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+  text-transform: capitalize;
+}
+
+/* Scroll horizontal para os cartões */
+.dashboard-cards-scroll {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.dashboard-cards-scroll::-webkit-scrollbar { display: none; }
+.dashboard-cards-scroll .og-credit-card {
+  min-width: 260px;
+  flex-shrink: 0;
+}

@@ -1,0 +1,219 @@
+/**
+ * OrganizaGrana — Página de Cartões de Crédito
+ * CRUD completo de cartões com fatura atual calculada.
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import { useApp } from '../../store/AppContext.jsx';
+import { getAllCards, createCard, updateCard, deleteCard } from '../../services/cards.js';
+import { getCardInvoiceTotal } from '../../services/transactions.js';
+import { formatCurrency } from '../../utils/currency.js';
+import './CardsPage.css';
+
+// Paleta de cores para cartões
+const CARD_COLORS = [
+  '#6C5CE7','#00B894','#E17055','#0984E3','#FD79A8',
+  '#FDCB6E','#A29BFE','#00CEC9','#636E72','#2D3436',
+];
+
+const defaultForm = () => ({
+  name: '', last_digits: '', closing_day: '', due_day: '',
+  credit_limit: '', color: '#6C5CE7',
+});
+
+const CardsPage = () => {
+  const { showToast } = useApp();
+  const [cards, setCards]       = useState([]);
+  const [invoices, setInvoices] = useState({});
+  const [loading, setLoading]   = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editCard, setEditCard] = useState(null);
+  const [form, setForm]         = useState(defaultForm());
+
+  const loadCards = useCallback(async () => {
+    setLoading(true);
+    try {
+      const c = await getAllCards();
+      setCards(c);
+      const inv = {};
+      await Promise.all(c.map(async (card) => {
+        inv[card.id] = await getCardInvoiceTotal(card.id, card.closing_day);
+      }));
+      setInvoices(inv);
+    } catch (err) {
+      console.error('[Cards] Erro:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadCards(); }, [loadCards]);
+
+  const openCreateForm = () => { setEditCard(null); setForm(defaultForm()); setShowForm(true); };
+  const openEditForm   = (card) => {
+    setEditCard(card);
+    setForm({
+      name: card.name, last_digits: card.last_digits,
+      closing_day: String(card.closing_day), due_day: String(card.due_day),
+      credit_limit: String(card.credit_limit || ''), color: card.color,
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.last_digits || !form.closing_day || !form.due_day) {
+      alert('Preencha todos os campos obrigatórios.');
+      return;
+    }
+    try {
+      const data = {
+        name: form.name.trim(),
+        last_digits: form.last_digits.replace(/\D/g, '').slice(-4),
+        closing_day: parseInt(form.closing_day),
+        due_day: parseInt(form.due_day),
+        credit_limit: parseFloat(form.credit_limit) || 0,
+        color: form.color,
+      };
+      if (editCard) {
+        await updateCard(editCard.id, data);
+        showToast('Cartão atualizado!', 'success');
+      } else {
+        await createCard(data);
+        showToast('Cartão adicionado!', 'success');
+      }
+      setShowForm(false);
+      loadCards();
+    } catch (err) {
+      showToast('Erro ao salvar cartão.', 'error');
+    }
+  };
+
+  const handleDelete = async (card) => {
+    if (!window.confirm(`Excluir o cartão "${card.name}"?`)) return;
+    try {
+      await deleteCard(card.id);
+      showToast('Cartão excluído.', 'success');
+      loadCards();
+    } catch (err) {
+      showToast('Erro ao excluir.', 'error');
+    }
+  };
+
+  return (
+    <div className="og-page">
+      <div className="og-page-header">
+        <div>
+          <h1 className="og-page-header__title">Cartões</h1>
+          <p className="og-page-header__subtitle">{cards.length} cartão(ões) cadastrado(s)</p>
+        </div>
+        <button className="og-btn og-btn--primary og-btn--sm" onClick={openCreateForm}>
+          + Novo
+        </button>
+      </div>
+
+      <div className="og-scrollable og-page-content">
+        {loading ? (
+          [1, 2].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 130, borderRadius: 20 }} />
+          ))
+        ) : cards.length === 0 ? (
+          <div className="og-empty-state">
+            <div className="og-empty-state__emoji">💳</div>
+            <p className="og-empty-state__title">Nenhum cartão cadastrado</p>
+            <p className="og-empty-state__subtitle">Adicione seus cartões de crédito para controlar as faturas.</p>
+            <button className="og-btn og-btn--primary" style={{ marginTop: 'var(--space-4)' }} onClick={openCreateForm}>
+              + Adicionar Cartão
+            </button>
+          </div>
+        ) : (
+          cards.map((card) => (
+            <div key={card.id}>
+              <div
+                className="og-credit-card"
+                style={{ background: `linear-gradient(135deg, ${card.color} 0%, ${card.color}BB 100%)` }}
+              >
+                <div className="og-credit-card__header">
+                  <div>
+                    <p className="og-credit-card__name">{card.name}</p>
+                    <p className="og-credit-card__digits">•••• {card.last_digits}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="cards-action-btn" onClick={() => openEditForm(card)}>✏️</button>
+                    <button className="cards-action-btn" onClick={() => handleDelete(card)}>🗑️</button>
+                  </div>
+                </div>
+                <div className="og-credit-card__footer">
+                  <div>
+                    <p className="og-credit-card__invoice-label">Fatura atual</p>
+                    <p className="og-credit-card__invoice-amount">{formatCurrency(invoices[card.id] ?? 0)}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p className="og-credit-card__due">Fecha dia {card.closing_day}</p>
+                    <p className="og-credit-card__due">Vence dia {card.due_day}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Formulário */}
+      {showForm && (
+        <>
+          <div className="og-sheet-overlay" onClick={() => setShowForm(false)} />
+          <div className="og-sheet">
+            <div className="og-sheet__handle" />
+            <h2 className="og-sheet__title">{editCard ? 'Editar Cartão' : 'Novo Cartão'}</h2>
+
+            <div className="og-input-group">
+              <label className="og-label">Nome do Cartão *</label>
+              <input className="og-input" placeholder="Ex: Nubank, C6 Bank..." value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+              <div className="og-input-group">
+                <label className="og-label">Últimos 4 dígitos *</label>
+                <input className="og-input" placeholder="1234" maxLength={4} inputMode="numeric" value={form.last_digits} onChange={(e) => setForm({ ...form, last_digits: e.target.value })} />
+              </div>
+              <div className="og-input-group">
+                <label className="og-label">Limite (R$)</label>
+                <input className="og-input" placeholder="0,00" inputMode="decimal" value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: e.target.value })} />
+              </div>
+              <div className="og-input-group">
+                <label className="og-label">Dia de Fechamento *</label>
+                <input className="og-input" placeholder="Ex: 25" inputMode="numeric" maxLength={2} value={form.closing_day} onChange={(e) => setForm({ ...form, closing_day: e.target.value })} />
+              </div>
+              <div className="og-input-group">
+                <label className="og-label">Dia de Vencimento *</label>
+                <input className="og-input" placeholder="Ex: 5" inputMode="numeric" maxLength={2} value={form.due_day} onChange={(e) => setForm({ ...form, due_day: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="og-input-group">
+              <label className="og-label">Cor do Cartão</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {CARD_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setForm({ ...form, color })}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', background: color,
+                      border: form.color === color ? '3px solid var(--color-text)' : '2px solid transparent',
+                      cursor: 'pointer', transition: 'border var(--transition-fast)',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <button className="og-btn og-btn--primary og-btn--full og-btn--lg" onClick={handleSave}>
+              {editCard ? 'Salvar Alterações' : 'Adicionar Cartão'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default CardsPage;

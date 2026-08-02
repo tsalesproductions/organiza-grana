@@ -1,0 +1,323 @@
+/**
+ * OrganizaGrana — Página de Configurações
+ * Gerencia: dados do usuário, categorias, notificações e info do app.
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import { useApp } from '../../store/AppContext.jsx';
+import { getUserConfig, updateUserEmail } from '../../services/user.js';
+import { getAllCategories, createCategory, updateCategory, deleteCategory, AVAILABLE_ICONS, CATEGORY_COLORS } from '../../services/categories.js';
+import { getNotificationConfig, updateNotificationConfig } from '../../services/notifications.js';
+import './SettingsPage.css';
+
+const SettingsPage = () => {
+  const { showToast } = useApp();
+  const [activeSection, setActiveSection] = useState(null); // null | 'categories' | 'notifications' | 'user'
+
+  // Dados do usuário
+  const [email, setEmail]           = useState('');
+  const [userLoaded, setUserLoaded] = useState(false);
+
+  // Categorias
+  const [categories, setCategories] = useState([]);
+  const [catTypeFilter, setCatTypeFilter] = useState('expense');
+  const [catForm, setCatForm]       = useState(null); // null | { name, icon, color, type }
+  const [editCatId, setEditCatId]   = useState(null);
+
+  // Notificações
+  const [notifConfig, setNotifConfig] = useState([]);
+
+  const loadUser = useCallback(async () => {
+    const user = await getUserConfig();
+    if (user) setEmail(user.email);
+    setUserLoaded(true);
+  }, []);
+
+  const loadCategories = useCallback(async () => {
+    const cats = await getAllCategories();
+    setCategories(cats);
+  }, []);
+
+  const loadNotifConfig = useCallback(async () => {
+    const configs = await getNotificationConfig();
+    setNotifConfig(configs);
+  }, []);
+
+  useEffect(() => {
+    loadUser();
+    loadCategories();
+    loadNotifConfig();
+  }, []);
+
+  // ---- Handlers de usuário ----
+  const handleSaveEmail = async () => {
+    if (!email.trim()) return;
+    try {
+      await updateUserEmail(email.trim());
+      showToast('E-mail atualizado!', 'success');
+    } catch (err) {
+      showToast('Erro ao salvar.', 'error');
+    }
+  };
+
+  // ---- Handlers de categorias ----
+  const handleSaveCat = async () => {
+    if (!catForm?.name || !catForm?.icon || !catForm?.color) {
+      alert('Preencha todos os campos da categoria.');
+      return;
+    }
+    try {
+      if (editCatId) {
+        await updateCategory(editCatId, catForm);
+        showToast('Categoria atualizada!', 'success');
+      } else {
+        await createCategory({ ...catForm, type: catTypeFilter });
+        showToast('Categoria criada!', 'success');
+      }
+      setCatForm(null);
+      setEditCatId(null);
+      loadCategories();
+    } catch (err) {
+      showToast('Erro ao salvar categoria.', 'error');
+    }
+  };
+
+  const handleDeleteCat = async (cat) => {
+    if (cat.is_default) { showToast('Categorias padrão não podem ser excluídas.', 'warning'); return; }
+    if (!window.confirm(`Excluir "${cat.name}"?`)) return;
+    try {
+      await deleteCategory(cat.id);
+      showToast('Categoria excluída.', 'success');
+      loadCategories();
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir.', 'error');
+    }
+  };
+
+  // ---- Handlers de notificações ----
+  const handleToggleNotif = async (config) => {
+    const updated = { ...config, enabled: config.enabled === 1 ? 0 : 1 };
+    await updateNotificationConfig(config.id, updated);
+    loadNotifConfig();
+  };
+
+  const filteredCats = categories.filter((c) => c.type === catTypeFilter);
+
+  return (
+    <div className="og-page">
+      <div className="og-page-header">
+        <h1 className="og-page-header__title">Configurações</h1>
+      </div>
+
+      <div className="og-scrollable">
+
+        {/* ---- Dados do Usuário ---- */}
+        <div className="settings-section">
+          <p className="settings-section__title">CONTA</p>
+          <div className="og-card">
+            <div
+              className="og-settings-item"
+              onClick={() => setActiveSection(activeSection === 'user' ? null : 'user')}
+            >
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">👤</div>
+                <div>
+                  <p className="og-settings-item__title">Meu E-mail</p>
+                  {userLoaded && <p className="og-settings-item__subtitle">{email}</p>}
+                </div>
+              </div>
+              <span className="og-settings-item__chevron">{activeSection === 'user' ? '▼' : '›'}</span>
+            </div>
+            {activeSection === 'user' && (
+              <div style={{ padding: 'var(--space-4)' }}>
+                <input
+                  className="og-input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{ marginBottom: 'var(--space-3)' }}
+                />
+                <button className="og-btn og-btn--primary og-btn--full" onClick={handleSaveEmail}>
+                  Salvar E-mail
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ---- Categorias ---- */}
+        <div className="settings-section">
+          <p className="settings-section__title">CATEGORIAS</p>
+          <div className="og-card">
+            <div
+              className="og-settings-item"
+              onClick={() => setActiveSection(activeSection === 'categories' ? null : 'categories')}
+            >
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">🏷️</div>
+                <div>
+                  <p className="og-settings-item__title">Gerenciar Categorias</p>
+                  <p className="og-settings-item__subtitle">{categories.length} categorias</p>
+                </div>
+              </div>
+              <span className="og-settings-item__chevron">{activeSection === 'categories' ? '▼' : '›'}</span>
+            </div>
+
+            {activeSection === 'categories' && (
+              <div style={{ padding: 'var(--space-3) var(--space-4)' }}>
+                {/* Filtro por tipo */}
+                <div className="og-toggle-group" style={{ marginBottom: 'var(--space-3)' }}>
+                  <button
+                    className={`og-toggle-btn ${catTypeFilter === 'expense' ? 'og-toggle-btn--active og-toggle-btn--expense' : ''}`}
+                    onClick={() => setCatTypeFilter('expense')}
+                  >Despesas</button>
+                  <button
+                    className={`og-toggle-btn ${catTypeFilter === 'income' ? 'og-toggle-btn--active og-toggle-btn--income' : ''}`}
+                    onClick={() => setCatTypeFilter('income')}
+                  >Receitas</button>
+                </div>
+
+                {/* Lista */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredCats.map((cat) => (
+                    <div key={cat.id} className="settings-category-item">
+                      <div
+                        className="og-category-icon"
+                        style={{ background: `${cat.color}22`, color: cat.color }}
+                      >
+                        {cat.icon}
+                      </div>
+                      <span style={{ flex: 1, fontSize: 'var(--font-size-sm)', color: 'var(--color-text)' }}>
+                        {cat.name}
+                        {cat.is_default === 1 && (
+                          <span style={{ fontSize: 10, color: 'var(--color-text-muted)', marginLeft: 6 }}>(padrão)</span>
+                        )}
+                      </span>
+                      <button
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                        onClick={() => { setEditCatId(cat.id); setCatForm({ name: cat.name, icon: cat.icon, color: cat.color }); }}
+                      >✏️</button>
+                      {!cat.is_default && (
+                        <button
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                          onClick={() => handleDeleteCat(cat)}
+                        >🗑️</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  className="og-btn og-btn--secondary og-btn--full"
+                  style={{ marginTop: 'var(--space-3)' }}
+                  onClick={() => { setCatForm({ name: '', icon: '📌', color: '#6C5CE7' }); setEditCatId(null); }}
+                >
+                  + Nova Categoria
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ---- Notificações ---- */}
+        <div className="settings-section">
+          <p className="settings-section__title">NOTIFICAÇÕES</p>
+          <div className="og-card">
+            {notifConfig.map((config) => (
+              <div key={config.id} className="og-settings-item">
+                <div className="og-settings-item__left">
+                  <div className="og-settings-item__icon">🔔</div>
+                  <div>
+                    <p className="og-settings-item__title">
+                      {config.type === 'card_due' ? 'Vencimento de Fatura' : 'Outros lembretes'}
+                    </p>
+                    <p className="og-settings-item__subtitle">
+                      {config.enabled ? `${config.days_before} dias antes, às ${config.time}` : 'Desativado'}
+                    </p>
+                  </div>
+                </div>
+                <label className="og-switch">
+                  <input
+                    type="checkbox"
+                    checked={config.enabled === 1}
+                    onChange={() => handleToggleNotif(config)}
+                  />
+                  <div className="og-switch__track" />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ---- Sobre ---- */}
+        <div className="settings-section">
+          <p className="settings-section__title">SOBRE</p>
+          <div className="og-card">
+            <div className="og-settings-item" style={{ cursor: 'default' }}>
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">💰</div>
+                <div>
+                  <p className="og-settings-item__title">OrganizaGrana</p>
+                  <p className="og-settings-item__subtitle">Versão 1.0.0 · 100% offline</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ height: 'calc(var(--tab-bar-height) + var(--safe-area-bottom) + var(--space-4))' }} />
+      </div>
+
+      {/* Modal de formulário de categoria */}
+      {catForm !== null && (
+        <>
+          <div className="og-sheet-overlay" onClick={() => { setCatForm(null); setEditCatId(null); }} />
+          <div className="og-sheet">
+            <div className="og-sheet__handle" />
+            <h2 className="og-sheet__title">{editCatId ? 'Editar Categoria' : 'Nova Categoria'}</h2>
+
+            <div className="og-input-group">
+              <label className="og-label">Nome</label>
+              <input className="og-input" placeholder="Nome da categoria" value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} />
+            </div>
+
+            <div className="og-input-group">
+              <label className="og-label">Ícone</label>
+              <div className="settings-icon-grid">
+                {AVAILABLE_ICONS.map((icon) => (
+                  <button
+                    key={icon}
+                    className={`settings-icon-btn ${catForm.icon === icon ? 'settings-icon-btn--active' : ''}`}
+                    onClick={() => setCatForm({ ...catForm, icon })}
+                  >{icon}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="og-input-group">
+              <label className="og-label">Cor</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {CATEGORY_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setCatForm({ ...catForm, color })}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', background: color,
+                      border: catForm.color === color ? '3px solid var(--color-text)' : '2px solid transparent',
+                      cursor: 'pointer',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <button className="og-btn og-btn--primary og-btn--full og-btn--lg" onClick={handleSaveCat}>
+              {editCatId ? 'Salvar Alterações' : 'Criar Categoria'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default SettingsPage;
