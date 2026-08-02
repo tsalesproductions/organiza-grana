@@ -1,0 +1,89 @@
+/* ShoppingListsPage CSS */
+.shopping-lists-page {
+  background: var(--color-bg);
+}
+
+.shopping-lists-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.shopping-lists-section__title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-bold);
+  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
+  margin: 0 0 var(--space-1);
+}
+
+.shopping-lists-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.shopping-list-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  border: 1.5px solid var(--color-border-light);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.shopping-list-card:active {
+  transform: scale(0.98);
+}
+
+.shopping-list-card--completed {
+  opacity: 0.75;
+  background: var(--color-surface-alt);
+}
+
+.shopping-list-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.shopping-list-card__title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.shopping-list-card__subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 3px 0 0;
+}
+
+.shopping-list-card__delete {
+  background: none;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  opacity: 0.4;
+  padding: 4px;
+}
+.shopping-list-card__delete:active { opacity: 1; }
+
+.shopping-list-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--color-border-light);
+  padding-top: var(--space-3);
+}
+
+.shopping-list-card__amount {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-extrabold);
+  color: var(--color-primary);
+}

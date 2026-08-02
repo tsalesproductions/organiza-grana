@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, getCurrentMonthYear, formatDateShort } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
 import AIImportSheet from '../../components/ai/AIImportSheet.jsx';
+import ShoppingListsPage from '../Shopping/ShoppingListsPage.jsx';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -25,6 +26,7 @@ const DashboardPage = () => {
   const [formType, setFormType] = useState('expense');
   const [userName, setUserName] = useState('');
   const [showAiSheet, setShowAiSheet] = useState(false);
+  const [showShoppingLists, setShowShoppingLists] = useState(false);
 
   const { month, year } = getCurrentMonthYear();
 
@@ -135,6 +137,13 @@ const DashboardPage = () => {
             <div className="og-quick-btn__icon">🤖</div>
             <span className="og-quick-btn__label">Por Foto</span>
           </button>
+          <button
+            className="og-quick-btn og-quick-btn--shopping"
+            onClick={() => setShowShoppingLists(true)}
+          >
+            <div className="og-quick-btn__icon">🛒</div>
+            <span className="og-quick-btn__label">Compras</span>
+          </button>
         </div>
 
         {/* Faturas Ativas */}
@@ -232,6 +241,18 @@ const DashboardPage = () => {
           onClose={() => setShowAiSheet(false)}
           onSave={() => { loadData(); showToast('Lançamentos importados!', 'success'); }}
         />
+      )}
+
+      {/* Shopping Lists Modal / Subapp */}
+      {showShoppingLists && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 950 }}>
+          <ShoppingListsPage
+            onClose={() => {
+              setShowShoppingLists(false);
+              loadData();
+            }}
+          />
+        </div>
       )}
 
     </div>

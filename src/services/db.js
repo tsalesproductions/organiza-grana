@@ -181,6 +181,27 @@ export const initDatabase = async () => {
         time        TEXT DEFAULT '09:00'
       )`
     },
+    // Listas de compras
+    {
+      sql: `CREATE TABLE IF NOT EXISTS shopping_lists (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        created_at  TEXT DEFAULT (datetime('now', 'localtime')),
+        status      TEXT DEFAULT 'active',
+        total_amount REAL DEFAULT 0
+      )`
+    },
+    // Itens de lista de compras
+    {
+      sql: `CREATE TABLE IF NOT EXISTS shopping_list_items (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        list_id     INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+        name        TEXT NOT NULL,
+        quantity    INTEGER DEFAULT 1,
+        unit_price  REAL DEFAULT 0,
+        is_checked  INTEGER DEFAULT 0
+      )`
+    },
   ]);
 
   // --- Migration: adiciona coluna 'name' se não existir ---

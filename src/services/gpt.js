@@ -166,3 +166,72 @@ Regras importantes:
       date: item.date || null,
     }));
 };
+
+/**
+ * Extrai o preço numérico de uma foto de etiqueta de supermercado usando GPT Vision.
+ * @param {string} base64Data - imagem em base64
+ * @returns {Promise<number>} - valor do preço extraído
+ */
+export const extractPriceFromImage = async (base64Data) => {
+  const userConfig = await getUserConfig();
+
+  if (!userConfig?.gpt_api_key || !userConfig?.gpt_enabled) {
+    throw new Error('CONFIG_REQUIRED');
+  }
+
+  const mimeType = 'image/jpeg';
+  const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+
+  const payload = {
+    model: 'gpt-4o-mini',
+    max_tokens: 150,
+    messages: [
+      {
+        role: 'system',
+        content: `Você é um assistente especialista em extrair preços de etiquetas de supermercado.
+Analise a imagem e retorne APENAS um JSON no formato: {"price": 14.90} com o valor numérico em Reais (BRL).
+Se houver múltiplos preços (ex: preço normal vs preço clube), prefira o preço menor/promocional se visível.
+Se não houver preço visível na imagem, retorne: {"error": "nao_encontrado"}.
+NÃO inclua formatação markdown nem explicações.`,
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${mimeType};base64,${cleanBase64}`,
+              detail: 'high',
+            },
+          },
+          { type: 'text', text: 'Extraia o preço desta etiqueta.' },
+        ],
+      },
+    ],
+  };
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${userConfig.gpt_api_key}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro na API de IA ao ler a foto.');
+  }
+
+  const result = await response.json();
+  const content = result?.choices?.[0]?.message?.content || '';
+  const cleaned = content.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(cleaned);
+
+  if (parsed.error || typeof parsed.price !== 'number') {
+    throw new Error('Preço não identificado na imagem.');
+  }
+
+  return Math.abs(parsed.price);
+};
+
