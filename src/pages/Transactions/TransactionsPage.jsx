@@ -8,6 +8,7 @@ import { getTransactionsByMonth, deleteTransaction } from '../../services/transa
 import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, navigateMonth, groupByDate, getDateLabel } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import './TransactionsPage.css';
 
 const TransactionsPage = () => {
@@ -20,6 +21,13 @@ const TransactionsPage = () => {
   const [search, setSearch]             = useState('');
   const [editData, setEditData]         = useState(null);
   const [showForm, setShowForm]         = useState(false);
+
+  // Estado do modal de confirmação de deleção
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    transaction: null,
+    step: 'initial', // 'initial' | 'single'
+  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -35,47 +43,72 @@ const TransactionsPage = () => {
 
   useEffect(() => { loadData(); }, [loadData, refreshTrigger]);
 
-  const handleDelete = async (t) => {
-    const hasGroup = t.installment_group_id;
+  // ---- Handlers de deleção ----
+  const handleDelete = (t) => {
+    setConfirmState({ open: true, transaction: t, step: 'initial' });
+  };
 
-    if (!hasGroup) {
-      if (!window.confirm(`Excluir "${t.description}"?`)) return;
-      try {
-        await deleteTransaction(t.id, 'single');
-        await loadData();
-        showToast('Lançamento excluído.', 'success');
-      } catch (err) {
-        showToast('Erro ao excluir.', 'error');
-      }
-      return;
+  const closeConfirm = () => {
+    setConfirmState({ open: false, transaction: null, step: 'initial' });
+  };
+
+  const execDelete = async (mode) => {
+    const t = confirmState.transaction;
+    closeConfirm();
+    try {
+      await deleteTransaction(t.id, mode);
+      await loadData();
+      const msgs = {
+        single: 'Lançamento excluído.',
+        all:    'Todas as ocorrências foram excluídas.',
+      };
+      showToast(msgs[mode] || 'Excluído.', 'success');
+    } catch (err) {
+      showToast('Erro ao excluir.', 'error');
+    }
+  };
+
+  const buildConfirmProps = () => {
+    const t = confirmState.transaction;
+    if (!t) return {};
+
+    const isRecurring = !!t.installment_group_id;
+
+    if (!isRecurring) {
+      // Lançamento único
+      return {
+        icon: '🗑️',
+        title: 'Excluir lançamento?',
+        message: `"${t.description}" será removido permanentemente.`,
+        actions: [
+          {
+            label: 'Excluir',
+            variant: 'danger',
+            onClick: () => execDelete('single'),
+          },
+        ],
+      };
     }
 
-    // Se possui grupo de recorrência / parcelamento
-    const deleteAll = window.confirm(
-      `"${t.description}" é um lançamento recorrente/parcelado.\n\n` +
-      `Clique em [OK] para excluir TODAS as ocorrências deste grupo, ou [Cancelar] para decidir.`
-    );
-
-    if (deleteAll) {
-      try {
-        await deleteTransaction(t.id, 'all');
-        await loadData();
-        showToast('Todas as ocorrências foram excluídas.', 'success');
-      } catch (err) {
-        showToast('Erro ao excluir.', 'error');
-      }
-    } else {
-      const deleteSingle = window.confirm(`Deseja excluir Apenas este lançamento do mês?`);
-      if (deleteSingle) {
-        try {
-          await deleteTransaction(t.id, 'single');
-          await loadData();
-          showToast('Lançamento deste mês excluído.', 'success');
-        } catch (err) {
-          showToast('Erro ao excluir.', 'error');
-        }
-      }
-    }
+    // Lançamento recorrente/parcelado
+    const typeLabel = t.recurrence_type === 'installment' ? 'parcelado' : 'recorrente';
+    return {
+      icon: '🔄',
+      title: `Excluir lançamento ${typeLabel}`,
+      message: `"${t.description}" faz parte de um grupo. O que deseja fazer?`,
+      actions: [
+        {
+          label: 'Excluir apenas este mês',
+          variant: 'secondary',
+          onClick: () => execDelete('single'),
+        },
+        {
+          label: 'Excluir todas as ocorrências',
+          variant: 'danger',
+          onClick: () => execDelete('all'),
+        },
+      ],
+    };
   };
 
   const handleEdit = (t) => {
@@ -92,6 +125,8 @@ const TransactionsPage = () => {
 
   const grouped = groupByDate(filtered);
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+  const confirmProps = buildConfirmProps();
 
   return (
     <div className="og-page transactions-page">
@@ -228,6 +263,16 @@ const TransactionsPage = () => {
           onClose={() => setShowForm(false)}
         />
       )}
+
+      {/* Modal de confirmação de deleção */}
+      <ConfirmDialog
+        open={confirmState.open}
+        onCancel={closeConfirm}
+        icon={confirmProps.icon}
+        title={confirmProps.title}
+        message={confirmProps.message}
+        actions={confirmProps.actions || []}
+      />
     </div>
   );
 };

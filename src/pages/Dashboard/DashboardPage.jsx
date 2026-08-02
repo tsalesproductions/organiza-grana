@@ -7,6 +7,7 @@ import { useApp } from '../../store/AppContext.jsx';
 import { getMonthSummary, getRecentTransactions } from '../../services/transactions.js';
 import { getAllCards } from '../../services/cards.js';
 import { getCardInvoiceTotal } from '../../services/transactions.js';
+import { getUserConfig } from '../../services/user.js';
 import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, getCurrentMonthYear, formatDateShort } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
@@ -21,20 +22,23 @@ const DashboardPage = () => {
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState('expense');
+  const [userName, setUserName] = useState('');
 
   const { month, year } = getCurrentMonthYear();
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [s, r, c] = await Promise.all([
+      const [s, r, c, user] = await Promise.all([
         getMonthSummary(month, year),
         getRecentTransactions(5),
         getAllCards(),
+        getUserConfig(),
       ]);
       setSummary(s);
       setRecent(r);
       setCards(c);
+      if (user?.name) setUserName(user.name);
 
       // Carrega fatura de cada cartão
       const invoices = {};
@@ -72,7 +76,9 @@ const DashboardPage = () => {
       {/* Header */}
       <div className="dashboard-header">
         <div>
-          <p className="dashboard-header__greeting">Olá! 👋</p>
+          <p className="dashboard-header__greeting">
+            Olá{userName ? `, ${userName.split(' ')[0]}` : ''}! 👋
+          </p>
           <h1 className="dashboard-header__period">{formatMonthYear(month, year)}</h1>
         </div>
       </div>

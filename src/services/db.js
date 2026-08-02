@@ -120,7 +120,10 @@ export const initDatabase = async () => {
     {
       sql: `CREATE TABLE IF NOT EXISTS user_config (
         id          INTEGER PRIMARY KEY,
-        email       TEXT NOT NULL,
+        name        TEXT,
+        email       TEXT,
+        gpt_enabled INTEGER DEFAULT 0,
+        gpt_api_key TEXT,
         created_at  TEXT DEFAULT (datetime('now', 'localtime'))
       )`
     },
@@ -179,6 +182,22 @@ export const initDatabase = async () => {
       )`
     },
   ]);
+
+  // --- Migration: adiciona coluna 'name' se não existir ---
+  try {
+    await executeSql('ALTER TABLE user_config ADD COLUMN name TEXT', []);
+    console.log('[DB] Migration: coluna name adicionada.');
+  } catch (_) {
+    // Coluna já existe — ignorar erro
+  }
+
+  // --- Migration: adiciona colunas GPT se não existirem ---
+  try {
+    await executeSql('ALTER TABLE user_config ADD COLUMN gpt_enabled INTEGER DEFAULT 0', []);
+  } catch (_) {}
+  try {
+    await executeSql('ALTER TABLE user_config ADD COLUMN gpt_api_key TEXT', []);
+  } catch (_) {}
 
   // --- Popula categorias padrão (apenas se ainda não existirem) ---
   const existing = await executeSql('SELECT COUNT(*) as count FROM categories', []);

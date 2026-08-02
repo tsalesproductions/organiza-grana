@@ -7,6 +7,7 @@ import { useApp } from '../../store/AppContext.jsx';
 import { getAllCards, createCard, updateCard, deleteCard } from '../../services/cards.js';
 import { getCardInvoiceTotal } from '../../services/transactions.js';
 import { formatCurrency } from '../../utils/currency.js';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import './CardsPage.css';
 
 // Paleta de cores para cartões
@@ -28,6 +29,7 @@ const CardsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [editCard, setEditCard] = useState(null);
   const [form, setForm]         = useState(defaultForm());
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, card: null });
 
   const loadCards = useCallback(async () => {
     setLoading(true);
@@ -49,7 +51,8 @@ const CardsPage = () => {
   useEffect(() => { loadCards(); }, [loadCards]);
 
   const openCreateForm = () => { setEditCard(null); setForm(defaultForm()); setShowForm(true); };
-  const openEditForm   = (card) => {
+  const openEditForm   = (card, e) => {
+    e.stopPropagation();
     setEditCard(card);
     setForm({
       name: card.name, last_digits: card.last_digits,
@@ -61,7 +64,7 @@ const CardsPage = () => {
 
   const handleSave = async () => {
     if (!form.name || !form.last_digits || !form.closing_day || !form.due_day) {
-      alert('Preencha todos os campos obrigatórios.');
+      showToast('Preencha todos os campos obrigatórios.', 'warning');
       return;
     }
     try {
@@ -87,8 +90,14 @@ const CardsPage = () => {
     }
   };
 
-  const handleDelete = async (card) => {
-    if (!window.confirm(`Excluir o cartão "${card.name}"?`)) return;
+  const confirmDelete = (card, e) => {
+    e.stopPropagation();
+    setDeleteConfirm({ open: true, card });
+  };
+
+  const handleDelete = async () => {
+    const card = deleteConfirm.card;
+    setDeleteConfirm({ open: false, card: null });
     try {
       await deleteCard(card.id);
       showToast('Cartão excluído.', 'success');
@@ -136,9 +145,21 @@ const CardsPage = () => {
                     <p className="og-credit-card__name">{card.name}</p>
                     <p className="og-credit-card__digits">•••• {card.last_digits}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="cards-action-btn" onClick={() => openEditForm(card)}>✏️</button>
-                    <button className="cards-action-btn" onClick={() => handleDelete(card)}>🗑️</button>
+                  <div className="cards-actions">
+                    <button
+                      className="cards-action-btn"
+                      onClick={(e) => openEditForm(card, e)}
+                      aria-label="Editar cartão"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="cards-action-btn cards-action-btn--delete"
+                      onClick={(e) => confirmDelete(card, e)}
+                      aria-label="Excluir cartão"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
                 <div className="og-credit-card__footer">
@@ -212,6 +233,22 @@ const CardsPage = () => {
           </div>
         </>
       )}
+
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onCancel={() => setDeleteConfirm({ open: false, card: null })}
+        icon="🗑️"
+        title="Excluir cartão?"
+        message={`O cartão "${deleteConfirm.card?.name}" e todos os dados associados serão removidos.`}
+        actions={[
+          {
+            label: 'Excluir cartão',
+            variant: 'danger',
+            onClick: handleDelete,
+          },
+        ]}
+      />
     </div>
   );
 };

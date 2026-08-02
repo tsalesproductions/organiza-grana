@@ -21,6 +21,7 @@
   box-shadow: var(--shadow-card);
   border: 1px solid var(--color-border-light);
   overflow: hidden;
+  flex-shrink: 0;
 }
 .reports-summary__item {
   flex: 1;

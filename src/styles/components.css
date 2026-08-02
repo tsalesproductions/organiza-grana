@@ -10,6 +10,7 @@
   border: 1px solid var(--color-border-light);
   overflow: hidden;
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  flex-shrink: 0;
 }
 .og-card:active {
   box-shadow: var(--shadow-xs);
@@ -31,6 +32,8 @@
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-lg);
+  flex-shrink: 0;
+  min-height: 140px;
 }
 .og-hero-card::before {
   content: '';
@@ -148,6 +151,7 @@
 .og-quick-actions {
   display: flex;
   gap: var(--space-3);
+  flex-shrink: 0;
 }
 .og-quick-btn {
   flex: 1;
@@ -243,6 +247,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  flex-shrink: 0;
 }
 .og-transaction-item {
   display: flex;
@@ -314,6 +319,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 .og-credit-card::before {
   content: '';
@@ -364,6 +370,7 @@
   justify-content: center;
   padding: var(--space-12) var(--space-6);
   text-align: center;
+  flex-shrink: 0;
 }
 .og-empty-state__emoji {
   font-size: 48px;
@@ -429,6 +436,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--space-3);
+  flex-shrink: 0;
 }
 .og-section-title {
   font-size: var(--font-size-md);
@@ -538,13 +546,13 @@
 
 /* ===================== PAGE CONTENT ===================== */
 .og-page-content {
-  padding: var(--space-4) var(--space-4);
-  padding-bottom: calc(var(--tab-bar-height) + var(--safe-area-bottom) + var(--space-6));
-  overflow-y: auto;
-  height: 100%;
+  padding: var(--space-4);
+  padding-bottom: calc(var(--tab-bar-height) + var(--safe-area-bottom) + var(--space-8)) !important;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  height: auto !important;
+  min-height: min-content;
 }
 
 /* ===================== CATEGORY ICON ===================== */

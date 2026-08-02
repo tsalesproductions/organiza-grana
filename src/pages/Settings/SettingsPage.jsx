@@ -1,10 +1,10 @@
 /**
  * OrganizaGrana — Página de Configurações
- * Gerencia: dados do usuário, categorias, notificações e info do app.
+ * Gerencia: dados do usuário (nome), categorias, notificações e info do app.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../store/AppContext.jsx';
-import { getUserConfig, updateUserEmail } from '../../services/user.js';
+import { getUserConfig, updateUserName, updateGptConfig } from '../../services/user.js';
 import { getAllCategories, createCategory, updateCategory, deleteCategory, AVAILABLE_ICONS, CATEGORY_COLORS } from '../../services/categories.js';
 import { getNotificationConfig, updateNotificationConfig } from '../../services/notifications.js';
 import './SettingsPage.css';
@@ -14,8 +14,12 @@ const SettingsPage = () => {
   const [activeSection, setActiveSection] = useState(null); // null | 'categories' | 'notifications' | 'user'
 
   // Dados do usuário
-  const [email, setEmail]           = useState('');
+  const [name, setName]             = useState('');
   const [userLoaded, setUserLoaded] = useState(false);
+
+  // GPT Integration
+  const [gptEnabled, setGptEnabled] = useState(false);
+  const [gptApiKey, setGptApiKey]   = useState('');
 
   // Categorias
   const [categories, setCategories] = useState([]);
@@ -28,7 +32,11 @@ const SettingsPage = () => {
 
   const loadUser = useCallback(async () => {
     const user = await getUserConfig();
-    if (user) setEmail(user.email);
+    if (user) {
+      if (user.name) setName(user.name);
+      setGptEnabled(user.gpt_enabled === 1);
+      setGptApiKey(user.gpt_api_key || '');
+    }
     setUserLoaded(true);
   }, []);
 
@@ -49,20 +57,42 @@ const SettingsPage = () => {
   }, []);
 
   // ---- Handlers de usuário ----
-  const handleSaveEmail = async () => {
-    if (!email.trim()) return;
+  const handleSaveName = async () => {
+    if (!name.trim()) return;
     try {
-      await updateUserEmail(email.trim());
-      showToast('E-mail atualizado!', 'success');
+      await updateUserName(name.trim());
+      showToast('Nome atualizado!', 'success');
+      setActiveSection(null);
     } catch (err) {
       showToast('Erro ao salvar.', 'error');
+    }
+  };
+
+  // ---- Handlers de GPT ----
+  const handleToggleGpt = async (e) => {
+    const enabled = e.target.checked;
+    setGptEnabled(enabled);
+    try {
+      await updateGptConfig(enabled, gptApiKey);
+      showToast(enabled ? 'Integração GPT ativada!' : 'Integração GPT desativada.', 'info');
+    } catch (err) {
+      showToast('Erro ao atualizar integração.', 'error');
+    }
+  };
+
+  const handleSaveGptKey = async () => {
+    try {
+      await updateGptConfig(gptEnabled, gptApiKey.trim());
+      showToast('Chave API do GPT salva com sucesso!', 'success');
+    } catch (err) {
+      showToast('Erro ao salvar Chave API.', 'error');
     }
   };
 
   // ---- Handlers de categorias ----
   const handleSaveCat = async () => {
     if (!catForm?.name || !catForm?.icon || !catForm?.color) {
-      alert('Preencha todos os campos da categoria.');
+      showToast('Preencha todos os campos da categoria.', 'warning');
       return;
     }
     try {
@@ -121,8 +151,8 @@ const SettingsPage = () => {
               <div className="og-settings-item__left">
                 <div className="og-settings-item__icon">👤</div>
                 <div>
-                  <p className="og-settings-item__title">Meu E-mail</p>
-                  {userLoaded && <p className="og-settings-item__subtitle">{email}</p>}
+                  <p className="og-settings-item__title">Meu Nome</p>
+                  {userLoaded && <p className="og-settings-item__subtitle">{name || 'Não definido'}</p>}
                 </div>
               </div>
               <span className="og-settings-item__chevron">{activeSection === 'user' ? '▼' : '›'}</span>
@@ -131,13 +161,15 @@ const SettingsPage = () => {
               <div style={{ padding: 'var(--space-4)' }}>
                 <input
                   className="og-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  placeholder="Seu nome"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoCapitalize="words"
                   style={{ marginBottom: 'var(--space-3)' }}
                 />
-                <button className="og-btn og-btn--primary og-btn--full" onClick={handleSaveEmail}>
-                  Salvar E-mail
+                <button className="og-btn og-btn--primary og-btn--full" onClick={handleSaveName}>
+                  Salvar Nome
                 </button>
               </div>
             )}
@@ -218,6 +250,53 @@ const SettingsPage = () => {
           </div>
         </div>
 
+        {/* ---- Integração GPT ---- */}
+        <div className="settings-section">
+          <p className="settings-section__title">INTEGRAÇÃO COM IA (GPT)</p>
+          <div className="og-card">
+            <div className="og-settings-item">
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">🤖</div>
+                <div>
+                  <p className="og-settings-item__title">Ativar OpenAI GPT</p>
+                  <p className="og-settings-item__subtitle">
+                    {gptEnabled ? 'Integração ativa' : 'Desativado'}
+                  </p>
+                </div>
+              </div>
+              <label className="og-switch">
+                <input
+                  type="checkbox"
+                  checked={gptEnabled}
+                  onChange={handleToggleGpt}
+                />
+                <div className="og-switch__track" />
+              </label>
+            </div>
+
+            {gptEnabled && (
+              <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-border-light)' }}>
+                <div className="og-input-group" style={{ marginBottom: 'var(--space-3)' }}>
+                  <label className="og-label">API Key do OpenAI</label>
+                  <input
+                    className="og-input"
+                    type="password"
+                    placeholder="sk-..."
+                    value={gptApiKey}
+                    onChange={(e) => setGptApiKey(e.target.value)}
+                  />
+                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    Sua chave é armazenada de forma segura no seu dispositivo.
+                  </p>
+                </div>
+                <button className="og-btn og-btn--primary og-btn--full" onClick={handleSaveGptKey}>
+                  Salvar Chave API
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* ---- Notificações ---- */}
         <div className="settings-section">
           <p className="settings-section__title">NOTIFICAÇÕES</p>
@@ -257,7 +336,7 @@ const SettingsPage = () => {
                 <div className="og-settings-item__icon">💰</div>
                 <div>
                   <p className="og-settings-item__title">OrganizaGrana</p>
-                  <p className="og-settings-item__subtitle">Versão 1.0.0 · 100% offline</p>
+                  <p className="og-settings-item__subtitle">Versão 1.0.0</p>
                 </div>
               </div>
             </div>

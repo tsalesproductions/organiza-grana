@@ -125,18 +125,35 @@
   font-weight: var(--font-semibold);
 }
 
-/* Indicador ativo (ponto) */
+/* Indicador ativo — barra no topo do item */
 .tab-bar__indicator {
+  display: none; /* Substituído por ::before no item */
+}
+
+.tab-bar__item--active::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 24px;
+  width: 28px;
   height: 3px;
   background: var(--color-primary);
   border-radius: 0 0 var(--radius-full) var(--radius-full);
-  animation: scaleIn var(--transition-spring) forwards;
+  animation: indicatorScaleIn var(--transition-spring) forwards;
 }
+
+@keyframes indicatorScaleIn {
+  from {
+    transform: translateX(-50%) scaleX(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 1;
+  }
+}
+
 
 /* ---- Page Header padrão ---- */
 .og-page-header {

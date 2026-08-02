@@ -106,7 +106,7 @@ const ReportsPage = () => {
             </div>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={categoriesData}
@@ -172,21 +172,22 @@ const ReportsPage = () => {
           </h2>
 
           {loading ? (
-            <div className="skeleton" style={{ height: 200, borderRadius: 12 }} />
+            <div className="skeleton" style={{ height: 220, borderRadius: 12 }} />
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart
                 data={monthlyHistory}
-                margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-                barSize={14}
-                barCategoryGap="30%"
+                margin={{ top: 15, right: 10, left: -15, bottom: 25 }}
+                barSize={16}
+                barCategoryGap="25%"
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: 'var(--color-text-muted)', fontFamily: 'Inter' }}
+                  tick={{ fontSize: 12, fill: 'var(--color-text-secondary)', fontFamily: 'Inter' }}
                   axisLine={false}
                   tickLine={false}
+                  dy={6}
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: 'var(--color-text-muted)', fontFamily: 'Inter' }}
@@ -206,7 +207,7 @@ const ReportsPage = () => {
                 <Legend
                   iconType="circle"
                   iconSize={8}
-                  wrapperStyle={{ fontFamily: 'Inter', fontSize: 12 }}
+                  wrapperStyle={{ fontFamily: 'Inter', fontSize: 12, paddingTop: 10 }}
                 />
                 <Bar dataKey="income"  name="Receitas" fill="var(--color-income)"  radius={[6, 6, 0, 0]} />
                 <Bar dataKey="expense" name="Despesas" fill="var(--color-expense)" radius={[6, 6, 0, 0]} />
@@ -214,6 +215,9 @@ const ReportsPage = () => {
             </ResponsiveContainer>
           )}
         </div>
+
+        {/* Espaçador para o fundo não colar no bottom tab bar */}
+        <div style={{ height: 'calc(var(--tab-bar-height) + var(--safe-area-bottom) + var(--space-8))' }} />
 
       </div>
     </div>
