@@ -215,7 +215,9 @@ const TransactionsPage = () => {
                           {t.type === 'income' ? 'Receita' : 'Despesa'}
                         </span>
                         {t.payment_method === 'credit_card' && (
-                          <span className="og-badge og-badge--primary">💳 Cartão</span>
+                          <span className="og-badge og-badge--primary">
+                            💳 {t.card_name ? `${t.card_name}${t.card_last_digits ? ` (•••• ${t.card_last_digits})` : ''}` : 'Cartão'}
+                          </span>
                         )}
                         {t.recurrence_type === 'monthly_indefinite' && (
                           <span className="og-badge" style={{ background: 'var(--color-primary-ultra)', color: 'var(--color-primary)' }}>

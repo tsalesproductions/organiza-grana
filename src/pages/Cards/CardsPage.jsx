@@ -1,11 +1,11 @@
 /**
  * OrganizaGrana — Página de Cartões de Crédito
- * CRUD completo de cartões com fatura atual calculada.
+ * CRUD completo de cartões com fatura calculada por período e modal de detalhamento das compras.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../store/AppContext.jsx';
 import { getAllCards, createCard, updateCard, deleteCard } from '../../services/cards.js';
-import { getCardInvoiceTotal } from '../../services/transactions.js';
+import { getCardInvoiceTotal, getCardTransactions } from '../../services/transactions.js';
 import { formatCurrency } from '../../utils/currency.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import './CardsPage.css';
@@ -22,7 +22,10 @@ const defaultForm = () => ({
 });
 
 const CardsPage = () => {
-  const { showToast } = useApp();
+  const { selectedPeriod, showToast } = useApp();
+  const month = selectedPeriod?.month || (new Date().getMonth() + 1);
+  const year  = selectedPeriod?.year  || new Date().getFullYear();
+
   const [cards, setCards]       = useState([]);
   const [invoices, setInvoices] = useState({});
   const [loading, setLoading]   = useState(true);
@@ -30,6 +33,9 @@ const CardsPage = () => {
   const [editCard, setEditCard] = useState(null);
   const [form, setForm]         = useState(defaultForm());
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, card: null });
+
+  // Modal de Detalhamento do Cartão
+  const [cardDetail, setCardDetail] = useState(null); // null | { card, transactions }
 
   const loadCards = useCallback(async () => {
     setLoading(true);
@@ -46,7 +52,7 @@ const CardsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [month, year]);
 
   useEffect(() => { loadCards(); }, [loadCards]);
 
@@ -60,6 +66,15 @@ const CardsPage = () => {
       credit_limit: String(card.credit_limit || ''), color: card.color,
     });
     setShowForm(true);
+  };
+
+  const handleOpenDetail = async (card) => {
+    try {
+      const txs = await getCardTransactions(card.id, card.closing_day);
+      setCardDetail({ card, transactions: txs });
+    } catch (err) {
+      console.error('[Cards] Erro ao carregar detalhamento:', err);
+    }
   };
 
   const handleSave = async () => {
@@ -138,7 +153,11 @@ const CardsPage = () => {
             <div key={card.id}>
               <div
                 className="og-credit-card"
-                style={{ background: `linear-gradient(135deg, ${card.color} 0%, ${card.color}BB 100%)` }}
+                style={{
+                  background: `linear-gradient(135deg, ${card.color} 0%, ${card.color}BB 100%)`,
+                  cursor: 'pointer',
+                }}
+                onClick={() => handleOpenDetail(card)}
               >
                 <div className="og-credit-card__header">
                   <div>
@@ -178,7 +197,74 @@ const CardsPage = () => {
         )}
       </div>
 
-      {/* Formulário */}
+      {/* Modal de Detalhamento da Fatura */}
+      {cardDetail && (
+        <>
+          <div className="og-sheet-overlay" onClick={() => setCardDetail(null)} />
+          <div className="og-sheet animate-slide-up" style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="og-sheet__handle" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+              <div
+                style={{
+                  width: 40, height: 40, borderRadius: '50%', background: cardDetail.card.color,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#fff'
+                }}
+              >
+                💳
+              </div>
+              <div>
+                <h2 className="og-sheet__title" style={{ margin: 0 }}>{cardDetail.card.name}</h2>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                  •••• {cardDetail.card.last_digits} — Total: <strong>{formatCurrency(invoices[cardDetail.card.id] || 0)}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {cardDetail.transactions.length === 0 ? (
+                <div className="og-empty-state" style={{ padding: 'var(--space-4)' }}>
+                  <div className="og-empty-state__emoji">🧾</div>
+                  <p className="og-empty-state__title">Nenhuma compra neste mês</p>
+                  <p className="og-empty-state__subtitle">Não há despesas lançadas neste cartão no período.</p>
+                </div>
+              ) : (
+                cardDetail.transactions.map((t) => (
+                  <div
+                    key={t.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 14px', background: 'var(--color-surface-subtle, #F8F9FA)',
+                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 18 }}>{t.category_icon || '💳'}</span>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '13px', color: 'var(--color-text)' }}>{t.description}</p>
+                        <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-text-muted)' }}>{t.date}</p>
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--color-expense)' }}>
+                      -{formatCurrency(t.amount)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="og-btn og-btn--outline og-btn--full"
+              style={{ marginTop: 'var(--space-4)' }}
+              onClick={() => setCardDetail(null)}
+            >
+              Fechar
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Formulário de Criação/Edição */}
       {showForm && (
         <>
           <div className="og-sheet-overlay" onClick={() => setShowForm(false)} />

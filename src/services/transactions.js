@@ -97,10 +97,11 @@ export const getTransactionsByMonth = async (month, year) => {
             c.name  AS category_name,
             c.icon  AS category_icon,
             c.color AS category_color,
-            ca.name AS card_name
+            ca.name AS card_name,
+            ca.last_digits AS card_last_digits
      FROM transactions t
      LEFT JOIN categories c  ON t.category_id = c.id
-     LEFT JOIN cards      ca ON t.card_id = ca.id
+     LEFT JOIN cards      ca ON CAST(t.card_id AS TEXT) = CAST(ca.id AS TEXT)
      WHERE t.date BETWEEN ? AND ?
      ORDER BY t.date DESC, t.created_at DESC`,
     [startDate, endDate]
@@ -110,29 +111,54 @@ export const getTransactionsByMonth = async (month, year) => {
 };
 
 /**
- * Busca transações vinculadas a um cartão para o ciclo de fatura atual.
+ * Retorna o intervalo { cycleStart, cycleEnd } da fatura atual em aberto com base na data de hoje.
+ * @param {number} closingDay - dia de fechamento (1 a 31)
+ */
+export const getInvoiceCycleForMonth = (closingDay) => {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+
+  // Garante que o dia de fechamento seja válido para o mês atual
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const safeClosingDay = Math.min(closingDay || 1, daysInMonth);
+
+  let cycleStartObj, cycleEndObj;
+
+  if (today.getDate() <= safeClosingDay) {
+    // Fatura deste mês ainda está aberta
+    const prevDaysInMonth = new Date(y, m, 0).getDate();
+    const safePrevClosingDay = Math.min(closingDay || 1, prevDaysInMonth);
+    cycleStartObj = new Date(y, m - 1, safePrevClosingDay + 1);
+    cycleEndObj   = new Date(y, m, safeClosingDay);
+  } else {
+    // Fatura deste mês já fechou, fatura em aberto é a do mês que vem
+    const nextDaysInMonth = new Date(y, m + 2, 0).getDate();
+    const safeNextClosingDay = Math.min(closingDay || 1, nextDaysInMonth);
+    cycleStartObj = new Date(y, m, safeClosingDay + 1);
+    cycleEndObj   = new Date(y, m + 1, safeNextClosingDay);
+  }
+
+  return {
+    cycleStart: formatDate(cycleStartObj),
+    cycleEnd:   formatDate(cycleEndObj),
+  };
+};
+
+/**
+ * Busca transações vinculadas a um cartão para o ciclo da fatura em aberto atual.
  * @param {number} cardId
- * @param {number} closingDay - dia de fechamento do cartão
+ * @param {number} closingDay
  * @returns {Promise<Array>}
  */
 export const getCardTransactions = async (cardId, closingDay) => {
-  const today = new Date();
-  let cycleStart, cycleEnd;
-
-  if (today.getDate() <= closingDay) {
-    const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, closingDay + 1);
-    cycleStart = formatDate(prevMonth);
-    cycleEnd   = formatDate(new Date(today.getFullYear(), today.getMonth(), closingDay));
-  } else {
-    cycleStart = formatDate(new Date(today.getFullYear(), today.getMonth(), closingDay + 1));
-    cycleEnd   = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, closingDay));
-  }
+  const { cycleStart, cycleEnd } = getInvoiceCycleForMonth(closingDay);
 
   const result = await executeSql(
     `SELECT t.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
-     WHERE t.card_id = ? AND t.date BETWEEN ? AND ?
+     WHERE CAST(t.card_id AS TEXT) = CAST(? AS TEXT) AND t.date BETWEEN ? AND ?
      ORDER BY t.date DESC`,
     [cardId, cycleStart, cycleEnd]
   );
@@ -141,7 +167,7 @@ export const getCardTransactions = async (cardId, closingDay) => {
 };
 
 /**
- * Calcula o saldo total da fatura de um cartão no ciclo atual.
+ * Calcula o saldo total da fatura de um cartão no ciclo atual em aberto.
  */
 export const getCardInvoiceTotal = async (cardId, closingDay) => {
   const transactions = await getCardTransactions(cardId, closingDay);
@@ -292,18 +318,83 @@ export const createTransaction = async (data) => {
 };
 
 /**
- * Atualiza uma transação existente.
+ * Atualiza uma transação existente (suporta updateMode: 'single', 'future', 'all').
  */
-export const updateTransaction = async (id, data) => {
+export const updateTransaction = async (id, data, updateMode = 'single') => {
   const { description, amount, type, payment_method, card_id, category_id, date, notes } = data;
-  await executeSql(
-    `UPDATE transactions
-     SET description=?, amount=?, type=?, payment_method=?, card_id=?,
-         category_id=?, date=?, notes=?
-     WHERE id=?`,
-    [description, amount, type, payment_method,
-     card_id || null, category_id || null, date, notes || null, id]
-  );
+
+  if (updateMode === 'single') {
+    await executeSql(
+      `UPDATE transactions
+       SET description=?, amount=?, type=?, payment_method=?, card_id=?,
+           category_id=?, date=?, notes=?
+       WHERE id=?`,
+      [description, amount, type, payment_method,
+       card_id || null, category_id || null, date, notes || null, id]
+    );
+    return;
+  }
+
+  const currentRes = await executeSql('SELECT installment_group_id, date FROM transactions WHERE id=?', [id]);
+  const current = currentRes.rows.length > 0 ? currentRes.rows.item(0) : null;
+
+  if (!current || !current.installment_group_id) {
+    await executeSql(
+      `UPDATE transactions
+       SET description=?, amount=?, type=?, payment_method=?, card_id=?,
+           category_id=?, date=?, notes=?
+       WHERE id=?`,
+      [description, amount, type, payment_method,
+       card_id || null, category_id || null, date, notes || null, id]
+    );
+    return;
+  }
+
+  const groupId = current.installment_group_id;
+  const originalDate = current.date;
+
+  if (updateMode === 'all') {
+    await executeSql(
+      `UPDATE transactions
+       SET amount=?, type=?, payment_method=?, card_id=?, category_id=?, notes=?
+       WHERE installment_group_id=?`,
+      [amount, type, payment_method, card_id || null, category_id || null, notes || null, groupId]
+    );
+    return;
+  }
+
+  if (updateMode === 'future') {
+    const oldDateObj = new Date(originalDate + 'T12:00:00');
+    const newDateObj = new Date(date + 'T12:00:00');
+    const monthDiff = (newDateObj.getFullYear() - oldDateObj.getFullYear()) * 12 + (newDateObj.getMonth() - oldDateObj.getMonth());
+    const dayDiff   = newDateObj.getDate() - oldDateObj.getDate();
+
+    const futureRes = await executeSql(
+      `SELECT id, date FROM transactions WHERE installment_group_id=? AND date >= ? ORDER BY date ASC`,
+      [groupId, originalDate]
+    );
+    const futureTxs = rowsToArray(futureRes.rows);
+
+    const queries = [];
+    for (const tx of futureTxs) {
+      let updatedDate = tx.date;
+      if (monthDiff !== 0 || dayDiff !== 0) {
+        const d = new Date(tx.date + 'T12:00:00');
+        d.setMonth(d.getMonth() + monthDiff);
+        d.setDate(d.getDate() + dayDiff);
+        updatedDate = formatDate(d);
+      }
+
+      queries.push({
+        sql: `UPDATE transactions
+              SET amount=?, type=?, payment_method=?, card_id=?, category_id=?, date=?, notes=?
+              WHERE id=?`,
+        params: [amount, type, payment_method, card_id || null, category_id || null, updatedDate, notes || null, tx.id],
+      });
+    }
+
+    await executeTransaction(queries);
+  }
 };
 
 /**
@@ -385,7 +476,12 @@ export const getMonthlyHistory = async (months = 6) => {
 };
 
 // ---- Helpers ----
-const formatDate = (date) => date.toISOString().split('T')[0];
+const formatDate = (d) => {
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day   = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const rowsToArray = (rows) => {
   const arr = [];

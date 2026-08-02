@@ -48,15 +48,20 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
   const [cards, setCards]             = useState([]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
+  // Modal de confirmação para edição recorrente
+  const [recurringModal, setRecurringModal] = useState(null); // null | { pendingData }
+
   useEffect(() => {
     getAllCategories(type).then(setCategories);
     getAllCards().then(setCards);
   }, [type]);
 
-  // Ao trocar type, reseta categoria
-  useEffect(() => {
-    setCategoryId(null);
-  }, [type]);
+  const handleTypeSelect = (newType) => {
+    if (newType !== type) {
+      setType(newType);
+      setCategoryId(null);
+    }
+  };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
 
@@ -69,7 +74,7 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
     setPaymentMethod('credit_card');
   };
 
-  const handleSave = async () => {
+  const handleSave = async (overrideUpdateMode = null) => {
     const amount = parseCurrencyInput(amountStr);
 
     if (!amount || amount <= 0) {
@@ -86,37 +91,42 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
       return;
     }
 
+    const finalRecurrenceType = recurrenceMode === 'monthly'
+      ? (indefinite ? 'monthly_indefinite' : 'monthly')
+      : recurrenceMode;
+
+    const data = {
+      description: description.trim(),
+      amount,
+      type,
+      payment_method: type === 'income' ? 'cash' : paymentMethod,
+      card_id:       paymentMethod === 'credit_card' && type === 'expense' ? cardId : null,
+      category_id:   categoryId,
+      date,
+      is_recurring:  finalRecurrenceType ? 1 : 0,
+      recurrence_type: finalRecurrenceType,
+      installment_total: recurrenceMode === 'installment' ? installmentTotal : null,
+      installment_months: recurrenceMode === 'monthly' && !indefinite ? installmentMonths : null,
+      notes: notes.trim() || null,
+    };
+
+    // Se estiver editando e for um item de grupo recorrente e não foi escolhido o modo de atualização
+    if (editData && editData.installment_group_id && !overrideUpdateMode && !recurringModal) {
+      setRecurringModal({ pendingData: data });
+      return;
+    }
+
     setSaving(true);
     try {
-      let finalRecurrenceType = recurrenceMode;
-      if (recurrenceMode === 'monthly') {
-        finalRecurrenceType = indefinite ? 'monthly_indefinite' : 'monthly';
-      }
-
-      const data = {
-        description: description.trim(),
-        amount,
-        type,
-        payment_method: type === 'income' ? 'cash' : paymentMethod,
-        card_id:       paymentMethod === 'credit_card' && type === 'expense' ? cardId : null,
-        category_id:   categoryId,
-        date,
-        is_recurring:  finalRecurrenceType ? 1 : 0,
-        recurrence_type: finalRecurrenceType,
-        installment_total: recurrenceMode === 'installment' ? installmentTotal : null,
-        installment_months: recurrenceMode === 'monthly' && !indefinite ? installmentMonths : null,
-        notes: notes.trim() || null,
-      };
-
-      if (editData) {
-        await updateTransaction(editData.id, data);
+      if (editData && editData.id) {
+        await updateTransaction(editData.id, data, overrideUpdateMode || 'single');
       } else {
         await createTransaction(data);
 
         // Alerta de teto orçamentário
         if (type === 'expense' && categoryId) {
           try {
-            const alertInfo = await checkBudgetAlert(categoryId, numericAmount);
+            const alertInfo = await checkBudgetAlert(categoryId, amount);
             if (alertInfo) {
               if (alertInfo.type === 'exceeded') {
                 showToast(`⚠️ Atenção: Categoria ${alertInfo.categoryName} atingiu ${alertInfo.percentage}% do teto!`, 'warning');
@@ -128,6 +138,7 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
         }
       }
 
+      setRecurringModal(null);
       onSave();
     } catch (err) {
       console.error('[TransactionForm] Erro ao salvar:', err);
@@ -396,13 +407,51 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
         <button
           type="button"
           className="og-btn og-btn--primary og-btn--full og-btn--lg"
-          onClick={handleSave}
+          onClick={() => handleSave(null)}
           disabled={saving}
         >
           {saving ? <span className="onboarding-spinner" /> : `Salvar ${type === 'income' ? 'Receita' : 'Despesa'}`}
         </button>
 
       </div>
+
+      {/* Modal de escolha de atualização para lançamentos em grupo/recorrentes */}
+      {recurringModal && (
+        <>
+          <div className="og-sheet-overlay" style={{ zIndex: 1100 }} onClick={() => setRecurringModal(null)} />
+          <div className="og-sheet animate-slide-up" style={{ zIndex: 1101 }}>
+            <div className="og-sheet__handle" />
+            <h2 className="og-sheet__title">Atualizar Lançamento Recorrente</h2>
+            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
+              Este lançamento faz parte de uma série de lançamentos. Como deseja aplicar as alterações?
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <button
+                type="button"
+                className="og-btn og-btn--outline og-btn--full"
+                onClick={() => handleSave('single')}
+              >
+                🎯 Alterar apenas este lançamento
+              </button>
+              <button
+                type="button"
+                className="og-btn og-btn--primary og-btn--full"
+                onClick={() => handleSave('future')}
+              >
+                ⏩ Alterar este e os próximos lançamentos
+              </button>
+              <button
+                type="button"
+                className="og-btn og-btn--ghost og-btn--full"
+                onClick={() => handleSave('all')}
+              >
+                🌐 Alterar todos os lançamentos do grupo
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 };

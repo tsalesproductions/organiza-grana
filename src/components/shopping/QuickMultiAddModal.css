@@ -1,0 +1,120 @@
+/* QuickMultiAddModal CSS */
+.quick-multi-modal {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal, 1000);
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  padding: var(--space-4) var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  box-shadow: var(--shadow-xl);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.quick-multi-modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.quick-multi-modal__icon {
+  font-size: 28px;
+}
+
+.quick-multi-modal__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-extrabold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.quick-multi-modal__subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 1px 0 0;
+}
+
+.quick-multi-modal__entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.quick-multi-entry-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.quick-multi-qty {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface-subtle, #F8F9FA);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.quick-multi-qty-btn {
+  border: none;
+  background: transparent;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.quick-multi-qty-val {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.quick-multi-price-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.quick-multi-curr {
+  position: absolute;
+  left: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.quick-multi-input {
+  padding-left: 32px !important;
+}
+
+.quick-multi-del-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-expense);
+  font-size: 16px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.quick-multi-summary {
+  background: var(--color-surface-subtle, #F8F9FA);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-sm);
+}
+
+.quick-multi-summary strong {
+  margin-left: 6px;
+  font-size: var(--font-size-md);
+}

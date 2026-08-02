@@ -1,8 +1,9 @@
 /**
  * OrganizaGrana — ShoppingListDetail
  * Tela de execução da lista de compras em tempo real (no supermercado).
+ * Recursos: Busca em tempo real, Leitura por foto com fallback, Lançamento Avulso Rápido e Preço Unitário.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../../store/AppContext.jsx';
 import {
   getShoppingListById,
@@ -16,6 +17,7 @@ import { getUserConfig } from '../../services/user.js';
 import { extractPriceFromImage } from '../../services/gpt.js';
 import { formatCurrency } from '../../utils/currency.js';
 import QuickPriceModal from '../../components/shopping/QuickPriceModal.jsx';
+import QuickMultiAddModal from '../../components/shopping/QuickMultiAddModal.jsx';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
 import './ShoppingListDetail.css';
 
@@ -26,11 +28,17 @@ const ShoppingListDetail = ({ listId, onBack }) => {
   const [items, setItems]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [newItemName, setNewItemName]   = useState('');
+  const [searchQuery, setSearchQuery]   = useState('');
   const [gptEnabled, setGptEnabled]     = useState(false);
 
   // Modais
-  const [editPriceItem, setEditPriceItem] = useState(null); // item para o QuickPriceModal
-  const [showForm, setShowForm]           = useState(false); // formulário de transação final
+  const [editPriceItem, setEditPriceItem] = useState(null);
+  const [showMultiAdd, setShowMultiAdd]   = useState(false);
+  const [showForm, setShowForm]           = useState(false);
+
+  // Ref para input de foto fallback
+  const fileInputRef = useRef(null);
+  const [currentCameraItem, setCurrentCameraItem] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -53,7 +61,7 @@ const ShoppingListDetail = ({ listId, onBack }) => {
     loadData();
   }, [loadData]);
 
-  // ---- Adicionar Novo Item ----
+  // ---- Adicionar Novo Item Simples ----
   const handleAddItem = async (e) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
@@ -63,6 +71,23 @@ const ShoppingListDetail = ({ listId, onBack }) => {
       await loadData();
     } catch (err) {
       showToast('Erro ao adicionar item.', 'error');
+    }
+  };
+
+  // ---- Adicionar Item Avulso Múltiplo ----
+  const handleSaveMultiAdd = async ({ name, total_amount, unit_price, quantity }) => {
+    try {
+      await addShoppingListItem(listId, name, quantity, unit_price);
+      const updatedItems = await getShoppingListItems(listId);
+      const newItem = updatedItems.find((i) => i.name === name);
+      if (newItem) {
+        await updateShoppingListItem(newItem.id, listId, { is_checked: 1 });
+      }
+      setShowMultiAdd(false);
+      await loadData();
+      showToast('Item avulso adicionado com sucesso!', 'success');
+    } catch (err) {
+      showToast('Erro ao adicionar item avulso.', 'error');
     }
   };
 
@@ -76,7 +101,7 @@ const ShoppingListDetail = ({ listId, onBack }) => {
     }
   };
 
-  // ---- Alterar Quantidade Instantânea ----
+  // ---- Alterar Quantidade ----
   const handleUpdateQty = async (item, delta) => {
     const newQty = Math.max(1, item.quantity + delta);
     if (newQty === item.quantity) return;
@@ -101,26 +126,16 @@ const ShoppingListDetail = ({ listId, onBack }) => {
   // ---- Capturar Preço via Câmera/IA ----
   const handleCameraPrice = (item) => {
     if (!gptEnabled) {
-      showToast('Para ler preços com a câmera, ative a Integração com IA em Configurações.', 'warning');
+      showToast('Para ler preços por foto, ative e informe sua API Key em Configurações.', 'warning');
       return;
     }
 
-    if (window.navigator?.camera && window.Camera) {
-      window.navigator.camera.getPicture(
-        async (base64Data) => {
-          showToast('Lendo preço com a IA...', 'info');
-          try {
-            const extractedPrice = await extractPriceFromImage(base64Data);
-            await updateShoppingListItem(item.id, listId, {
-              unit_price: extractedPrice,
-              is_checked: 1, // marca automaticamente ao ler o preço!
-            });
-            await loadData();
-            showToast(`Preço lido: R$ ${extractedPrice.toFixed(2).replace('.', ',')}`, 'success');
-          } catch (err) {
-            showToast(err.message || 'Não foi possível identificar o preço na foto.', 'error');
-          }
-        },
+    setCurrentCameraItem(item);
+
+    // Usa plugin Cordova se nativamente disponível
+    if (typeof navigator !== 'undefined' && navigator.camera && window.Camera) {
+      navigator.camera.getPicture(
+        (base64Data) => processCameraImage(item, base64Data),
         (err) => console.warn('[Camera] Cancelado:', err),
         {
           quality: 80,
@@ -132,8 +147,41 @@ const ShoppingListDetail = ({ listId, onBack }) => {
           correctOrientation: true,
         }
       );
-    } else {
-      showToast('Câmera não disponível no navegador.', 'warning');
+      return;
+    }
+
+    // Fallback Web/Mobile com input file
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentCameraItem) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target.result;
+      const base64Data = dataUrl.split(',')[1] || dataUrl;
+      await processCameraImage(currentCameraItem, base64Data);
+      e.target.value = '';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const processCameraImage = async (item, base64Data) => {
+    showToast('Lendo preço da foto com a IA...', 'info');
+    try {
+      const extractedPrice = await extractPriceFromImage(base64Data);
+      await updateShoppingListItem(item.id, listId, {
+        unit_price: extractedPrice,
+        is_checked: 1,
+      });
+      await loadData();
+      showToast(`Preço lido: ${formatCurrency(extractedPrice)}`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Não foi possível identificar o preço na foto.', 'error');
     }
   };
 
@@ -174,8 +222,23 @@ const ShoppingListDetail = ({ listId, onBack }) => {
   const totalItemsCount = items.length;
   const progressPercent = totalItemsCount > 0 ? (checkedCount / totalItemsCount) * 100 : 0;
 
+  // Filtragem por busca
+  const filteredItems = items.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+  );
+
   return (
     <div className="og-page shopping-detail-page">
+      {/* Hidden File Input Fallback for Camera */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+      />
+
       {/* Header */}
       <div className="shopping-detail-header">
         <div className="shopping-detail-header__top">
@@ -184,7 +247,6 @@ const ShoppingListDetail = ({ listId, onBack }) => {
             <h1 className="shopping-detail-title">{list.name}</h1>
           </div>
 
-          {/* Botão discreto de finalizar no header */}
           <button
             type="button"
             className={`shopping-finish-btn ${list.total_amount <= 0 ? 'shopping-finish-btn--disabled' : ''}`}
@@ -209,7 +271,21 @@ const ShoppingListDetail = ({ listId, onBack }) => {
       </div>
 
       <div className="og-scrollable og-page-content">
-        {/* Formulário de adição rápida de item */}
+        {/* Campo de Pesquisa */}
+        <div className="shopping-search-bar">
+          <span className="shopping-search-icon">🔍</span>
+          <input
+            className="og-input shopping-search-input"
+            placeholder="Buscar item na lista..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button type="button" className="shopping-search-clear" onClick={() => setSearchQuery('')}>✕</button>
+          )}
+        </div>
+
+        {/* Formulário de Adicionar Item + Botão Add Avulso */}
         <form className="shopping-add-form" onSubmit={handleAddItem}>
           <input
             className="og-input shopping-add-input"
@@ -217,21 +293,31 @@ const ShoppingListDetail = ({ listId, onBack }) => {
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
           />
-          <button type="submit" className="og-btn og-btn--primary shopping-add-btn" aria-label="Adicionar">
+          <button type="submit" className="og-btn og-btn--primary shopping-add-btn" title="Adicionar Item">
             +
+          </button>
+          <button
+            type="button"
+            className="og-btn og-btn--outline shopping-multi-btn"
+            onClick={() => setShowMultiAdd(true)}
+            title="Lançar múltiplos valores avulsos"
+          >
+            ⚡ Add Avulso
           </button>
         </form>
 
         {/* Lista de Itens */}
-        {items.length === 0 ? (
+        {filteredItems.length === 0 ? (
           <div className="og-empty-state">
-            <div className="og-empty-state__emoji">🛒</div>
-            <p className="og-empty-state__title">Lista vazia</p>
-            <p className="og-empty-state__subtitle">Adicione os itens acima para começar suas compras.</p>
+            <div className="og-empty-state__emoji">{searchQuery ? '🔍' : '🛒'}</div>
+            <p className="og-empty-state__title">{searchQuery ? 'Nenhum item encontrado' : 'Lista vazia'}</p>
+            <p className="og-empty-state__subtitle">
+              {searchQuery ? `Não encontramos "${searchQuery}" nesta lista.` : 'Adicione os itens acima para começar suas compras.'}
+            </p>
           </div>
         ) : (
           <div className="shopping-items-list">
-            {items.map((item) => {
+            {filteredItems.map((item) => {
               const itemTotal = item.quantity * item.unit_price;
               return (
                 <div
@@ -253,11 +339,11 @@ const ShoppingListDetail = ({ listId, onBack }) => {
                     <p className="shopping-item-name">{item.name}</p>
                     <div className="shopping-item-sub">
                       <span className="shopping-item-unit-price">
-                        {item.unit_price > 0 ? formatCurrency(item.unit_price) : 'Sem preço'}
+                        {itemTotal > 0 ? formatCurrency(itemTotal) : 'Sem preço'}
                       </span>
-                      {item.quantity > 1 && (
-                        <span className="shopping-item-sub-total">
-                          (Total: {formatCurrency(itemTotal)})
+                      {item.quantity > 1 && item.unit_price > 0 && (
+                        <span className="shopping-item-sub-unit">
+                          ({formatCurrency(item.unit_price)}/un)
                         </span>
                       )}
                     </div>
@@ -293,7 +379,7 @@ const ShoppingListDetail = ({ listId, onBack }) => {
                       type="button"
                       className={`shopping-item-action-btn ${!gptEnabled ? 'shopping-item-action-btn--disabled' : ''}`}
                       onClick={() => handleCameraPrice(item)}
-                      title={gptEnabled ? 'Ler preço com Câmera' : 'Integração IA desativada'}
+                      title={gptEnabled ? 'Ler preço por Foto/Câmera' : 'Integração IA desativada'}
                     >📷</button>
 
                     {/* Excluir */}
@@ -310,8 +396,6 @@ const ShoppingListDetail = ({ listId, onBack }) => {
         )}
       </div>
 
-
-
       {/* Modal de Preço Rápido */}
       {editPriceItem && (
         <QuickPriceModal
@@ -321,11 +405,19 @@ const ShoppingListDetail = ({ listId, onBack }) => {
             await updateShoppingListItem(editPriceItem.id, listId, {
               unit_price,
               quantity,
-              is_checked: 1, // marca ao salvar preço
+              is_checked: 1,
             });
             setEditPriceItem(null);
             await loadData();
           }}
+        />
+      )}
+
+      {/* Modal de Lançamento Avulso Rápido */}
+      {showMultiAdd && (
+        <QuickMultiAddModal
+          onClose={() => setShowMultiAdd(false)}
+          onSave={handleSaveMultiAdd}
         />
       )}
 

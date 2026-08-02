@@ -46,7 +46,7 @@ const DashboardPage = () => {
       setCards(c);
       if (user?.name) setUserName(user.name);
 
-      // Carrega fatura de cada cartão
+      // Carrega fatura de cada cartão no período selecionado
       const invoices = {};
       await Promise.all(
         c.map(async (card) => {

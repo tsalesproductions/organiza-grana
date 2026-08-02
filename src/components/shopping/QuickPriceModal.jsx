@@ -1,9 +1,10 @@
 /**
  * OrganizaGrana — QuickPriceModal
  * Modal rápido para definir/editar preço e quantidade de um item da lista de compras.
+ * Exibe a multiplicação em tempo real (unidade x quantidade = total).
  */
 import React, { useState } from 'react';
-import { formatCurrencyInput, parseCurrencyInput } from '../../utils/currency.js';
+import { formatCurrencyInput, parseCurrencyInput, formatCurrency } from '../../utils/currency.js';
 import './QuickPriceModal.css';
 
 const QuickPriceModal = ({ item, onSave, onClose }) => {
@@ -12,15 +13,15 @@ const QuickPriceModal = ({ item, onSave, onClose }) => {
   );
   const [quantity, setQuantity] = useState(item.quantity || 1);
 
+  const unitPrice = parseCurrencyInput(priceStr);
+  const calculatedTotal = unitPrice * Math.max(1, quantity);
+
   const handleSave = () => {
-    const unitPrice = parseCurrencyInput(priceStr);
     onSave({
       unit_price: unitPrice,
       quantity: Math.max(1, quantity),
     });
   };
-
-  const calculatedTotal = parseCurrencyInput(priceStr) * Math.max(1, quantity);
 
   return (
     <>
@@ -45,7 +46,7 @@ const QuickPriceModal = ({ item, onSave, onClose }) => {
               className="quick-price-modal__qty-btn"
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             >-</button>
-            <span className="quick-price-modal__qty-val">{quantity}</span>
+            <span className="quick-price-modal__qty-val">{quantity} un</span>
             <button
               type="button"
               className="quick-price-modal__qty-btn"
@@ -70,6 +71,22 @@ const QuickPriceModal = ({ item, onSave, onClose }) => {
             />
           </div>
         </div>
+
+        {/* Resumo da Multiplicação em Tempo Real */}
+        {quantity > 1 && unitPrice > 0 && (
+          <div style={{
+            background: 'var(--color-surface-subtle, #F8F9FA)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: 'var(--radius-md)',
+            padding: '8px 12px',
+            fontSize: '12px',
+            color: 'var(--color-text-secondary)',
+            textAlign: 'center',
+            marginBottom: 'var(--space-2)'
+          }}>
+            💡 {quantity} un × {formatCurrency(unitPrice)} = <strong>{formatCurrency(calculatedTotal)} Total</strong>
+          </div>
+        )}
 
         <button
           type="button"
