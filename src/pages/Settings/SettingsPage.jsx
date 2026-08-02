@@ -127,6 +127,14 @@ const SettingsPage = () => {
   const handleToggleNotif = async (config) => {
     const updated = { ...config, enabled: config.enabled === 1 ? 0 : 1 };
     await updateNotificationConfig(config.id, updated);
+    showToast(updated.enabled ? 'Lembretes de vencimento ativados!' : 'Lembretes desativados.', 'info');
+    loadNotifConfig();
+  };
+
+  const handleUpdateNotifDays = async (config, days) => {
+    const updated = { ...config, days_before: days };
+    await updateNotificationConfig(config.id, updated);
+    showToast(`Aviso alterado para ${days} dias antes.`, 'success');
     loadNotifConfig();
   };
 
@@ -299,30 +307,51 @@ const SettingsPage = () => {
 
         {/* ---- Notificações ---- */}
         <div className="settings-section">
-          <p className="settings-section__title">NOTIFICAÇÕES</p>
+          <p className="settings-section__title">NOTIFICAÇÕES DE VENCIMENTO</p>
           <div className="og-card">
             {notifConfig.map((config) => (
-              <div key={config.id} className="og-settings-item">
-                <div className="og-settings-item__left">
-                  <div className="og-settings-item__icon">🔔</div>
-                  <div>
-                    <p className="og-settings-item__title">
-                      {config.type === 'card_due' ? 'Vencimento de Fatura' : 'Outros lembretes'}
-                    </p>
-                    <p className="og-settings-item__subtitle">
-                      {config.enabled ? `${config.days_before} dias antes, às ${config.time}` : 'Desativado'}
-                    </p>
+              <React.Fragment key={config.id}>
+                <div className="og-settings-item">
+                  <div className="og-settings-item__left">
+                    <div className="og-settings-item__icon">🔔</div>
+                    <div>
+                      <p className="og-settings-item__title">
+                        {config.type === 'card_due' ? 'Faturas e Contas' : 'Outros lembretes'}
+                      </p>
+                      <p className="og-settings-item__subtitle">
+                        {config.enabled ? `Avisar ${config.days_before} ${config.days_before === 1 ? 'dia' : 'dias'} antes do vencimento` : 'Desativado'}
+                      </p>
+                    </div>
                   </div>
+                  <label className="og-switch">
+                    <input
+                      type="checkbox"
+                      checked={config.enabled === 1}
+                      onChange={() => handleToggleNotif(config)}
+                    />
+                    <div className="og-switch__track" />
+                  </label>
                 </div>
-                <label className="og-switch">
-                  <input
-                    type="checkbox"
-                    checked={config.enabled === 1}
-                    onChange={() => handleToggleNotif(config)}
-                  />
-                  <div className="og-switch__track" />
-                </label>
-              </div>
+
+                {config.enabled === 1 && (
+                  <div style={{ padding: 'var(--space-3) var(--space-4)', borderTop: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>Avisar antecedência:</span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {[1, 3, 5].map((days) => (
+                        <button
+                          key={days}
+                          type="button"
+                          className={`og-badge ${config.days_before === days ? 'og-badge--income' : ''}`}
+                          style={{ cursor: 'pointer', border: '1px solid var(--color-border)', background: config.days_before === days ? undefined : 'var(--color-surface)' }}
+                          onClick={() => handleUpdateNotifDays(config, days)}
+                        >
+                          {days} {days === 1 ? 'dia' : 'dias'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
         </div>

@@ -22,6 +22,40 @@
   text-transform: capitalize;
 }
 
+.dashboard-ai-chat-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #6C5CE7 0%, #00CEC9 100%);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-spring);
+  -webkit-appearance: none;
+}
+.dashboard-ai-chat-btn:active {
+  transform: scale(0.92);
+}
+.dashboard-ai-chat-btn__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #FF7675;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-surface);
+}
+
+
 /* Scroll horizontal para os cartões */
 .dashboard-cards-scroll {
   display: flex;

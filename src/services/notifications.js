@@ -32,8 +32,7 @@ export const updateNotificationConfig = async (id, { enabled, days_before, time 
 };
 
 /**
- * Agenda notificações para todos os cartões cadastrados.
- * Calcula X dias antes do vencimento de cada fatura.
+ * Agenda notificações para cartões de crédito e despesas recorrentes.
  */
 export const scheduleAllNotifications = async () => {
   if (!isAvailable()) {
@@ -41,50 +40,74 @@ export const scheduleAllNotifications = async () => {
     return;
   }
 
-  // Cancela todas as notificações existentes
+  // Cancela todas as notificações agendadas anteriormente
   window.cordova.plugins.notification.local.cancelAll();
 
-  // Busca config de notificação
+  // Busca configs de notificação
   const configs = await getNotificationConfig();
-  const cardDueConfig = configs.find((c) => c.type === 'card_due');
+  const cardDueConfig = configs.find((c) => c.type === 'card_due') || { enabled: 1, days_before: 3, time: '09:00' };
 
-  if (!cardDueConfig || cardDueConfig.enabled === 0) return;
+  if (cardDueConfig.enabled === 0) return;
 
-  const cards = await getAllCards();
-  const [hour, minute] = cardDueConfig.time.split(':').map(Number);
-  const daysBefore = cardDueConfig.days_before;
+  const [hour, minute] = (cardDueConfig.time || '09:00').split(':').map(Number);
+  const daysBefore = cardDueConfig.days_before || 3;
 
   const notifications = [];
   const today = new Date();
 
+  // 1. Notificações para Faturas de Cartão de Crédito
+  const cards = await getAllCards();
   cards.forEach((card, index) => {
-    // Calcula próximo vencimento
     let dueDate = new Date(today.getFullYear(), today.getMonth(), card.due_day, hour, minute);
     if (dueDate <= today) {
       dueDate.setMonth(dueDate.getMonth() + 1);
     }
 
-    // Notificação X dias antes
     const notifDate = new Date(dueDate);
     notifDate.setDate(notifDate.getDate() - daysBefore);
 
     if (notifDate > today) {
       notifications.push({
-        id: card.id * 10 + index,
+        id: card.id * 100 + index + 1,
         title: `💳 Fatura do ${card.name}`,
-        text: `Vence em ${daysBefore} ${daysBefore === 1 ? 'dia' : 'dias'} — confira sua fatura!`,
+        text: `Sua fatura vence em ${daysBefore} ${daysBefore === 1 ? 'dia' : 'dias'} (dia ${card.due_day}).`,
         trigger: { at: notifDate },
-        smallIcon: 'res://notification_icon',
-        color: card.color,
         vibrate: true,
-        foreground: false,
+      });
+    }
+  });
+
+  // 2. Notificações para Despesas Recorrentes
+  const recurringResult = await executeSql(
+    `SELECT description, amount, date FROM transactions WHERE is_recurring = 1 AND type = 'expense'`,
+    []
+  );
+  const recurringList = rowsToArray(recurringResult.rows);
+
+  recurringList.forEach((item, index) => {
+    const itemDay = new Date(item.date).getDate() || 10;
+    let dueDate = new Date(today.getFullYear(), today.getMonth(), itemDay, hour, minute);
+    if (dueDate <= today) {
+      dueDate.setMonth(dueDate.getMonth() + 1);
+    }
+
+    const notifDate = new Date(dueDate);
+    notifDate.setDate(notifDate.getDate() - 1); // 1 dia antes da conta
+
+    if (notifDate > today) {
+      notifications.push({
+        id: 5000 + index,
+        title: `🔔 Lembrete de Conta`,
+        text: `A conta "${item.description}" de R$ ${item.amount.toFixed(2).replace('.', ',')} vence amanhã.`,
+        trigger: { at: notifDate },
+        vibrate: true,
       });
     }
   });
 
   if (notifications.length > 0) {
     window.cordova.plugins.notification.local.schedule(notifications);
-    console.log(`[Notifications] ${notifications.length} notificações agendadas.`);
+    console.log(`[Notifications] ${notifications.length} notificações agendadas com sucesso.`);
   }
 };
 

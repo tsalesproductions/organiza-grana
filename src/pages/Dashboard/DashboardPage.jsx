@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, getCurrentMonthYear, formatDateShort } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
 import AIImportSheet from '../../components/ai/AIImportSheet.jsx';
+import AIChatSheet from '../../components/ai/AIChatSheet.jsx';
 import ShoppingListsPage from '../Shopping/ShoppingListsPage.jsx';
 import './DashboardPage.css';
 
@@ -26,6 +27,7 @@ const DashboardPage = () => {
   const [formType, setFormType] = useState('expense');
   const [userName, setUserName] = useState('');
   const [showAiSheet, setShowAiSheet] = useState(false);
+  const [showAiChat, setShowAiChat]   = useState(false);
   const [showShoppingLists, setShowShoppingLists] = useState(false);
 
   const { month, year } = getCurrentMonthYear();
@@ -78,13 +80,24 @@ const DashboardPage = () => {
     <div className="og-page dashboard-page">
 
       {/* Header */}
-      <div className="dashboard-header">
+      <div className="dashboard-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <p className="dashboard-header__greeting">
             Olá{userName ? `, ${userName.split(' ')[0]}` : ''}! 👋
           </p>
           <h1 className="dashboard-header__period">{formatMonthYear(month, year)}</h1>
         </div>
+
+        {/* Botão de Consultor IA */}
+        <button
+          type="button"
+          className="dashboard-ai-chat-btn"
+          onClick={() => setShowAiChat(true)}
+          title="Consultor Financeiro IA"
+        >
+          <span>💬</span>
+          <span className="dashboard-ai-chat-btn__badge">IA</span>
+        </button>
       </div>
 
       <div className="og-scrollable og-page-content">
@@ -240,6 +253,13 @@ const DashboardPage = () => {
         <AIImportSheet
           onClose={() => setShowAiSheet(false)}
           onSave={() => { loadData(); showToast('Lançamentos importados!', 'success'); }}
+        />
+      )}
+
+      {/* IA Chatbot Consultor */}
+      {showAiChat && (
+        <AIChatSheet
+          onClose={() => setShowAiChat(false)}
         />
       )}
 
