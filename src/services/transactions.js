@@ -6,12 +6,89 @@ import { executeSql, executeTransaction } from './db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
+ * Garante que lançamentos recorrentes por tempo indeterminado estejam gerados
+ * até o mês/ano solicitado (e com projeção de 12 meses à frente).
+ * @param {number} month - 1-12
+ * @param {number} year - ex: 2026
+ */
+export const ensureIndefiniteRecurrencesUpTo = async (month, year) => {
+  const targetDateStr = `${year}-${String(month).padStart(2, '0')}-28`;
+
+  // Busca todos os grupos únicos de recorrência por tempo indeterminado
+  const result = await executeSql(
+    `SELECT DISTINCT installment_group_id, description, amount, type, payment_method, 
+                     card_id, category_id, notes
+     FROM transactions
+     WHERE recurrence_type = 'monthly_indefinite' AND installment_group_id IS NOT NULL`,
+    []
+  );
+
+  const groups = rowsToArray(result.rows);
+  if (groups.length === 0) return;
+
+  const queries = [];
+
+  for (const g of groups) {
+    // Busca a maior data já gerada para esse grupo
+    const lastRes = await executeSql(
+      `SELECT MAX(date) as max_date, COUNT(*) as current_count
+       FROM transactions
+       WHERE installment_group_id = ?`,
+      [g.installment_group_id]
+    );
+
+    const maxDateStr = lastRes.rows.item(0)?.max_date;
+    let currentCount = lastRes.rows.item(0)?.current_count || 0;
+
+    if (!maxDateStr) continue;
+
+    let lastDate = new Date(maxDateStr + 'T12:00:00');
+    const targetDate = new Date(targetDateStr + 'T12:00:00');
+    // Queremos manter projeção de até 12 meses além do mês visualizado
+    targetDate.setMonth(targetDate.getMonth() + 12);
+
+    while (lastDate < targetDate) {
+      lastDate.setMonth(lastDate.getMonth() + 1);
+      currentCount++;
+
+      queries.push({
+        sql: `INSERT INTO transactions
+              (description, amount, type, payment_method, card_id, category_id, date,
+               is_recurring, recurrence_type, installment_total, installment_current,
+               installment_group_id, notes)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly_indefinite', NULL, ?, ?, ?)`,
+        params: [
+          g.description,
+          g.amount,
+          g.type,
+          g.payment_method,
+          g.card_id || null,
+          g.category_id || null,
+          formatDate(lastDate),
+          currentCount,
+          g.installment_group_id,
+          g.notes || null,
+        ],
+      });
+    }
+  }
+
+  if (queries.length > 0) {
+    await executeTransaction(queries);
+    console.log(`[DB] Gerados ${queries.length} lançamentos recorrentes adicionais.`);
+  }
+};
+
+/**
  * Busca todas as transações de um período (mês/ano).
  * @param {number} month - 1-12
  * @param {number} year  - ex: 2026
  * @returns {Promise<Array>}
  */
 export const getTransactionsByMonth = async (month, year) => {
+  // Auto-projeta lançamentos recorrentes por tempo indeterminado se necessário
+  await ensureIndefiniteRecurrencesUpTo(month, year);
+
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const endDate   = `${year}-${String(month).padStart(2, '0')}-31`;
 
@@ -42,14 +119,11 @@ export const getCardTransactions = async (cardId, closingDay) => {
   const today = new Date();
   let cycleStart, cycleEnd;
 
-  // Calcula o início e fim do ciclo de fatura atual
   if (today.getDate() <= closingDay) {
-    // Antes do fechamento: ciclo do mês anterior ao atual
     const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, closingDay + 1);
     cycleStart = formatDate(prevMonth);
     cycleEnd   = formatDate(new Date(today.getFullYear(), today.getMonth(), closingDay));
   } else {
-    // Após o fechamento: ciclo do mês atual ao próximo
     cycleStart = formatDate(new Date(today.getFullYear(), today.getMonth(), closingDay + 1));
     cycleEnd   = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, closingDay));
   }
@@ -106,9 +180,8 @@ export const getMonthSummary = async (month, year) => {
 };
 
 /**
- * Cria uma nova transação.
- * Se for parcelada, cria N transações com o mesmo installment_group_id.
- * Se for recorrente mensal, cria N meses de transações.
+ * Cria uma nova transação (Receita ou Despesa).
+ * Suporta: Único, Parcelado, Recorrente Tempo Indeterminado e Recorrente Prazo Fixo.
  * @param {Object} data - dados da transação
  */
 export const createTransaction = async (data) => {
@@ -118,11 +191,12 @@ export const createTransaction = async (data) => {
     installment_total, installment_months, notes,
   } = data;
 
-  // Caso 1: parcelado
+  // Caso 1: Parcelado (installment) -> Ex: 10x de R$ 100
   if (recurrence_type === 'installment' && installment_total > 1) {
     const groupId = uuidv4();
     const baseDate = new Date(date + 'T12:00:00');
     const queries = [];
+    const monthlyAmount = amount / installment_total;
 
     for (let i = 0; i < installment_total; i++) {
       const installmentDate = new Date(baseDate);
@@ -136,7 +210,7 @@ export const createTransaction = async (data) => {
               VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'installment', ?, ?, ?, ?)`,
         params: [
           `${description} (${i + 1}/${installment_total})`,
-          amount / installment_total,
+          monthlyAmount,
           type, payment_method, card_id || null, category_id || null,
           formatDate(installmentDate), installment_total, i + 1, groupId, notes || null,
         ],
@@ -147,7 +221,38 @@ export const createTransaction = async (data) => {
     return;
   }
 
-  // Caso 2: recorrente mensal
+  // Caso 2: Recorrente por Tempo Indeterminado (monthly_indefinite) -> Ex: Salário, Aluguel
+  if (recurrence_type === 'monthly_indefinite') {
+    const groupId = uuidv4();
+    const baseDate = new Date(date + 'T12:00:00');
+    const queries = [];
+    // Gera inicialmente 24 meses
+    const initialMonths = 24;
+
+    for (let i = 0; i < initialMonths; i++) {
+      const recurringDate = new Date(baseDate);
+      recurringDate.setMonth(recurringDate.getMonth() + i);
+
+      queries.push({
+        sql: `INSERT INTO transactions
+              (description, amount, type, payment_method, card_id, category_id, date,
+               is_recurring, recurrence_type, installment_total, installment_current,
+               installment_group_id, notes)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly_indefinite', NULL, ?, ?, ?)`,
+        params: [
+          description,
+          amount,
+          type, payment_method, card_id || null, category_id || null,
+          formatDate(recurringDate), i + 1, groupId, notes || null,
+        ],
+      });
+    }
+
+    await executeTransaction(queries);
+    return;
+  }
+
+  // Caso 3: Recorrente com Prazo Determinado (monthly) -> Ex: 6 meses
   if (is_recurring && recurrence_type === 'monthly' && installment_months > 1) {
     const groupId = uuidv4();
     const baseDate = new Date(date + 'T12:00:00');
@@ -164,9 +269,10 @@ export const createTransaction = async (data) => {
                installment_group_id, notes)
               VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly', ?, ?, ?, ?)`,
         params: [
-          description, amount, type, payment_method,
-          card_id || null, category_id || null, formatDate(recurringDate),
-          installment_months, i + 1, groupId, notes || null,
+          `${description} (${i + 1}/${installment_months})`,
+          amount,
+          type, payment_method, card_id || null, category_id || null,
+          formatDate(recurringDate), installment_months, i + 1, groupId, notes || null,
         ],
       });
     }
@@ -175,7 +281,7 @@ export const createTransaction = async (data) => {
     return;
   }
 
-  // Caso 3: transação simples
+  // Caso 4: Transação Simples (Única)
   await executeSql(
     `INSERT INTO transactions
      (description, amount, type, payment_method, card_id, category_id, date, notes)
@@ -201,15 +307,22 @@ export const updateTransaction = async (id, data) => {
 };
 
 /**
- * Remove uma transação (e suas parcelas se for parcelada).
+ * Remove uma transação.
+ * @param {number} id - ID da transação
+ * @param {'single' | 'all' | 'future'} deleteMode - Modo de exclusão
  */
-export const deleteTransaction = async (id, deleteGroup = false) => {
-  if (deleteGroup) {
-    const t = await executeSql('SELECT installment_group_id FROM transactions WHERE id=?', [id]);
-    const groupId = t.rows.item(0)?.installment_group_id;
-    if (groupId) {
-      await executeSql('DELETE FROM transactions WHERE installment_group_id=?', [groupId]);
-      return;
+export const deleteTransaction = async (id, deleteMode = 'single') => {
+  if (deleteMode === 'all' || deleteMode === 'future') {
+    const t = await executeSql('SELECT installment_group_id, date FROM transactions WHERE id=?', [id]);
+    const row = t.rows.item(0);
+    if (row && row.installment_group_id) {
+      if (deleteMode === 'all') {
+        await executeSql('DELETE FROM transactions WHERE installment_group_id=?', [row.installment_group_id]);
+        return;
+      } else if (deleteMode === 'future') {
+        await executeSql('DELETE FROM transactions WHERE installment_group_id=? AND date >= ?', [row.installment_group_id, row.date]);
+        return;
+      }
     }
   }
   await executeSql('DELETE FROM transactions WHERE id=?', [id]);

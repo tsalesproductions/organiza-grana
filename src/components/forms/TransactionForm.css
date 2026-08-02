@@ -134,6 +134,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+.transaction-form__card-btn--empty {
+  opacity: 0.7;
+}
 
 /* Opções de recorrência */
 .transaction-form__recurrence-options {
@@ -157,6 +160,17 @@
   border-color: var(--color-primary);
   background: var(--color-primary-ultra);
   color: var(--color-primary);
+  font-weight: var(--font-bold);
+}
+
+/* Container de Sub-Opções de Recorrência */
+.transaction-form__recurrence-box {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border: 1.5px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  animation: fadeIn var(--transition-fast) ease;
 }
 
 /* Seletor de número */
@@ -166,16 +180,17 @@
   justify-content: center;
   gap: var(--space-4);
   padding: var(--space-3);
-  background: var(--color-surface-alt);
+  background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
+  margin-top: var(--space-2);
 }
 .transaction-form__number-selector button {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-full);
   border: 1.5px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-surface-alt);
   font-size: var(--font-size-lg);
   font-weight: var(--font-bold);
   color: var(--color-primary);
@@ -193,7 +208,8 @@
 }
 .transaction-form__hint {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   text-align: center;
   margin-top: var(--space-2);
+  line-height: 1.4;
 }

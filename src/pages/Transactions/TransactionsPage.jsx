@@ -37,18 +37,44 @@ const TransactionsPage = () => {
 
   const handleDelete = async (t) => {
     const hasGroup = t.installment_group_id;
-    const msg = hasGroup
-      ? 'Excluir apenas esta parcela ou todas?'
-      : 'Excluir este lançamento?';
 
-    if (!window.confirm(msg)) return;
+    if (!hasGroup) {
+      if (!window.confirm(`Excluir "${t.description}"?`)) return;
+      try {
+        await deleteTransaction(t.id, 'single');
+        await loadData();
+        showToast('Lançamento excluído.', 'success');
+      } catch (err) {
+        showToast('Erro ao excluir.', 'error');
+      }
+      return;
+    }
 
-    try {
-      await deleteTransaction(t.id, false);
-      await loadData();
-      showToast('Lançamento excluído.', 'success');
-    } catch (err) {
-      showToast('Erro ao excluir.', 'error');
+    // Se possui grupo de recorrência / parcelamento
+    const deleteAll = window.confirm(
+      `"${t.description}" é um lançamento recorrente/parcelado.\n\n` +
+      `Clique em [OK] para excluir TODAS as ocorrências deste grupo, ou [Cancelar] para decidir.`
+    );
+
+    if (deleteAll) {
+      try {
+        await deleteTransaction(t.id, 'all');
+        await loadData();
+        showToast('Todas as ocorrências foram excluídas.', 'success');
+      } catch (err) {
+        showToast('Erro ao excluir.', 'error');
+      }
+    } else {
+      const deleteSingle = window.confirm(`Deseja excluir Apenas este lançamento do mês?`);
+      if (deleteSingle) {
+        try {
+          await deleteTransaction(t.id, 'single');
+          await loadData();
+          showToast('Lançamento deste mês excluído.', 'success');
+        } catch (err) {
+          showToast('Erro ao excluir.', 'error');
+        }
+      }
     }
   };
 
@@ -147,16 +173,26 @@ const TransactionsPage = () => {
                     </div>
                     <div className="og-transaction-item__info">
                       <p className="og-transaction-item__desc">{t.description}</p>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
                         <span className={`og-badge ${t.type === 'income' ? 'og-badge--income' : 'og-badge--expense'}`}>
                           {t.type === 'income' ? 'Receita' : 'Despesa'}
                         </span>
                         {t.payment_method === 'credit_card' && (
                           <span className="og-badge og-badge--primary">💳 Cartão</span>
                         )}
-                        {t.installment_total && (
+                        {t.recurrence_type === 'monthly_indefinite' && (
+                          <span className="og-badge" style={{ background: 'var(--color-primary-ultra)', color: 'var(--color-primary)' }}>
+                            🔄 Recorrente
+                          </span>
+                        )}
+                        {t.recurrence_type === 'installment' && t.installment_total && (
                           <span className="og-badge" style={{ background: 'var(--color-warning-light)', color: '#B8810A' }}>
                             {t.installment_current}/{t.installment_total}x
+                          </span>
+                        )}
+                        {t.recurrence_type === 'monthly' && t.installment_total && (
+                          <span className="og-badge" style={{ background: 'var(--color-warning-light)', color: '#B8810A' }}>
+                            {t.installment_current}/{t.installment_total}m
                           </span>
                         )}
                       </div>
