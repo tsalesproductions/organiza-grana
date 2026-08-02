@@ -72,3 +72,15 @@
   padding: 2px;
 }
 .transactions-delete-btn:active { opacity: 1; }
+
+/* Grupo de FABs (IA + Manual) */
+.transactions-fab-group {
+  position: absolute;
+  bottom: calc(var(--tab-bar-height) + var(--safe-area-bottom) + var(--space-4));
+  right: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+  z-index: 100;
+}

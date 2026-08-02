@@ -9,6 +9,7 @@ import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, navigateMonth, groupByDate, getDateLabel } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
+import AIImportSheet from '../../components/ai/AIImportSheet.jsx';
 import './TransactionsPage.css';
 
 const TransactionsPage = () => {
@@ -21,6 +22,7 @@ const TransactionsPage = () => {
   const [search, setSearch]             = useState('');
   const [editData, setEditData]         = useState(null);
   const [showForm, setShowForm]         = useState(false);
+  const [showAiSheet, setShowAiSheet]   = useState(false);
 
   // Estado do modal de confirmação de deleção
   const [confirmState, setConfirmState] = useState({
@@ -251,8 +253,15 @@ const TransactionsPage = () => {
         )}
       </div>
 
-      {/* FAB */}
-      <button className="og-fab" onClick={() => { setEditData(null); setShowForm(true); }}>+</button>
+      {/* FABs */}
+      <div className="transactions-fab-group">
+        <button
+          className="og-fab og-fab--secondary"
+          onClick={() => setShowAiSheet(true)}
+          title="Importar com IA"
+        >🤖</button>
+        <button className="og-fab" onClick={() => { setEditData(null); setShowForm(true); }}>+</button>
+      </div>
 
       {/* Form */}
       {showForm && (
@@ -261,6 +270,14 @@ const TransactionsPage = () => {
           editData={editData}
           onSave={async () => { setShowForm(false); await loadData(); showToast('Salvo!', 'success'); }}
           onClose={() => setShowForm(false)}
+        />
+      )}
+
+      {/* AI Import */}
+      {showAiSheet && (
+        <AIImportSheet
+          onClose={() => setShowAiSheet(false)}
+          onSave={async () => { await loadData(); showToast('Lançamentos importados!', 'success'); }}
         />
       )}
 

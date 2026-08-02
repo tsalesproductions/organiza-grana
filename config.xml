@@ -23,7 +23,6 @@
   <preference name="Fullscreen" value="false" />
   <preference name="DisallowOverscroll" value="true" />
   <preference name="KeyboardDisplayRequiresUserAction" value="false" />
-  <preference name="ScrollEnabled" value="false" />
 
   <!-- Plugin de SQLite -->
   <plugin name="cordova-sqlite-storage" spec="latest" />

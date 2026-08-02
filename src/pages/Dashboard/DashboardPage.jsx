@@ -11,6 +11,7 @@ import { getUserConfig } from '../../services/user.js';
 import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, getCurrentMonthYear, formatDateShort } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
+import AIImportSheet from '../../components/ai/AIImportSheet.jsx';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -23,6 +24,7 @@ const DashboardPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState('expense');
   const [userName, setUserName] = useState('');
+  const [showAiSheet, setShowAiSheet] = useState(false);
 
   const { month, year } = getCurrentMonthYear();
 
@@ -126,6 +128,13 @@ const DashboardPage = () => {
             <div className="og-quick-btn__icon">💳</div>
             <span className="og-quick-btn__label">Fatura</span>
           </button>
+          <button
+            className="og-quick-btn og-quick-btn--ai"
+            onClick={() => setShowAiSheet(true)}
+          >
+            <div className="og-quick-btn__icon">🤖</div>
+            <span className="og-quick-btn__label">Por Foto</span>
+          </button>
         </div>
 
         {/* Faturas Ativas */}
@@ -214,6 +223,14 @@ const DashboardPage = () => {
           initialType={formType}
           onSave={handleFormSave}
           onClose={() => setShowForm(false)}
+        />
+      )}
+
+      {/* IA Import Sheet */}
+      {showAiSheet && (
+        <AIImportSheet
+          onClose={() => setShowAiSheet(false)}
+          onSave={() => { loadData(); showToast('Lançamentos importados!', 'success'); }}
         />
       )}
 

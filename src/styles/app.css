@@ -213,11 +213,28 @@
   box-shadow: var(--shadow-lg);
   z-index: var(--z-header);
   transition: all var(--transition-spring);
+  -webkit-appearance: none;
 }
 .og-fab:active {
   transform: scale(0.92);
   box-shadow: var(--shadow-md);
 }
+
+/* Variante secundária: menor, para uso junto com FAB primário */
+.og-fab--secondary {
+  position: static; /* dentro de um grupo, não é fixed */
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+.og-fab--secondary:active {
+  background: var(--color-primary-ultra);
+}
+
 
 /* ---- Divider ---- */
 .og-divider {

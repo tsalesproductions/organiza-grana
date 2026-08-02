@@ -8,7 +8,7 @@ import { useApp } from '../../store/AppContext.jsx';
 import { createTransaction, updateTransaction } from '../../services/transactions.js';
 import { getAllCategories } from '../../services/categories.js';
 import { getAllCards } from '../../services/cards.js';
-import { parseCurrencyInput, formatCurrency } from '../../utils/currency.js';
+import { parseCurrencyInput, formatCurrencyInput, formatCurrency } from '../../utils/currency.js';
 import { todayISO } from '../../utils/dates.js';
 import './TransactionForm.css';
 
@@ -17,7 +17,7 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
 
   // ---- Estado do formulário ----
   const [type, setType]               = useState(editData?.type || initialType);
-  const [amountStr, setAmountStr]     = useState(editData ? String(editData.amount) : '');
+  const [amountStr, setAmountStr]     = useState(editData ? formatCurrencyInput(editData.amount) : '');
   const [description, setDescription] = useState(editData?.description || '');
   const [date, setDate]               = useState(editData?.date || todayISO());
   const [categoryId, setCategoryId]   = useState(editData?.category_id || null);
@@ -156,11 +156,11 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
           <span className="transaction-form__currency-symbol">R$</span>
           <input
             className="og-input og-input--large transaction-form__amount-input"
-            type="number"
-            inputMode="decimal"
+            type="text"
+            inputMode="numeric"
             placeholder="0,00"
             value={amountStr}
-            onChange={(e) => setAmountStr(e.target.value)}
+            onChange={(e) => setAmountStr(formatCurrencyInput(e.target.value))}
             autoFocus
           />
         </div>
