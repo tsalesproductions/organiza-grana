@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../store/AppContext.jsx';
 import { createTransaction, updateTransaction } from '../../services/transactions.js';
+import { checkBudgetAlert } from '../../services/budgets.js';
 import { getAllCategories } from '../../services/categories.js';
 import { getAllCards } from '../../services/cards.js';
 import { parseCurrencyInput, formatCurrencyInput, formatCurrency } from '../../utils/currency.js';
@@ -111,6 +112,20 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
         await updateTransaction(editData.id, data);
       } else {
         await createTransaction(data);
+
+        // Alerta de teto orçamentário
+        if (type === 'expense' && categoryId) {
+          try {
+            const alertInfo = await checkBudgetAlert(categoryId, numericAmount);
+            if (alertInfo) {
+              if (alertInfo.type === 'exceeded') {
+                showToast(`⚠️ Atenção: Categoria ${alertInfo.categoryName} atingiu ${alertInfo.percentage}% do teto!`, 'warning');
+              } else {
+                showToast(`💡 Aviso: Categoria ${alertInfo.categoryName} em ${alertInfo.percentage}% do teto.`, 'info');
+              }
+            }
+          } catch (_) {}
+        }
       }
 
       onSave();

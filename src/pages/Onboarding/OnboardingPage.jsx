@@ -49,7 +49,7 @@ const OnboardingPage = ({ onComplete }) => {
 
         {/* Logo e nome */}
         <div className="onboarding-logo">
-          <div className="onboarding-logo__icon">💰</div>
+          <img src="./img/logo.png" alt="OrganizaGrana" className="onboarding-logo__img" />
           <h1 className="onboarding-logo__name">OrganizaGrana</h1>
         </div>
 

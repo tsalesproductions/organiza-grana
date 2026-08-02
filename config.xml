@@ -33,6 +33,10 @@
   <!-- Plugin de informacoes do dispositivo -->
   <plugin name="cordova-plugin-device" spec="latest" />
 
+  <!-- Plugins de Arquivo e Compartilhamento Nativo -->
+  <plugin name="cordova-plugin-file" spec="latest" />
+  <plugin name="cordova-plugin-x-socialsharing" spec="latest" />
+
   <!-- Permissoes Android sao adicionadas automaticamente pelos plugins -->
   <!-- cordova-plugin-local-notification ja inclui RECEIVE_BOOT_COMPLETED, VIBRATE e WAKE_LOCK -->
 

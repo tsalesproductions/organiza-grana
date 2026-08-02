@@ -81,3 +81,57 @@
   font-weight: var(--font-bold);
   color: var(--color-expense);
 }
+
+/* Tetos Orçamentários */
+.reports-budgets-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reports-budget-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.reports-budget-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reports-budget-item__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+}
+
+.reports-budget-item__name {
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+}
+
+.reports-budget-item__values {
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+}
+
+.reports-budget-track {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.reports-budget-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition-fast), background var(--transition-fast);
+}
+

@@ -7,11 +7,19 @@ import { useApp } from '../../store/AppContext.jsx';
 import { getUserConfig, updateUserName, updateGptConfig } from '../../services/user.js';
 import { getAllCategories, createCategory, updateCategory, deleteCategory, AVAILABLE_ICONS, CATEGORY_COLORS } from '../../services/categories.js';
 import { getNotificationConfig, updateNotificationConfig } from '../../services/notifications.js';
+import { exportTransactionsToCSV } from '../../services/exportService.js';
+import { exportDatabaseBackup, importDatabaseBackup } from '../../services/backupService.js';
+import { getTransactionsByMonth, getMonthSummary } from '../../services/transactions.js';
+import { getCurrentMonthYear, formatMonthYear } from '../../utils/dates.js';
+import PDFReportModal from '../../components/reports/PDFReportModal.jsx';
 import './SettingsPage.css';
 
 const SettingsPage = () => {
   const { showToast } = useApp();
   const [activeSection, setActiveSection] = useState(null); // null | 'categories' | 'notifications' | 'user'
+
+  // PDF Report Modal State
+  const [pdfReportData, setPdfReportData] = useState(null);
 
   // Dados do usuário
   const [name, setName]             = useState('');
@@ -66,6 +74,73 @@ const SettingsPage = () => {
     } catch (err) {
       showToast('Erro ao salvar.', 'error');
     }
+  };
+
+  // ---- Handlers de Exportação e Backup ----
+  const handleExportCSV = async () => {
+    try {
+      const { month, year } = getCurrentMonthYear();
+      const txs = await getTransactionsByMonth(month, year);
+      if (!txs.length) {
+        showToast('Nenhum lançamento no mês para exportar.', 'warning');
+        return;
+      }
+      await exportTransactionsToCSV(txs, `Extrato_${month}_${year}.csv`);
+      showToast('Extrato CSV pronto!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Erro ao exportar CSV.', 'error');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const { month, year } = getCurrentMonthYear();
+      const [txs, summary] = await Promise.all([
+        getTransactionsByMonth(month, year),
+        getMonthSummary(month, year),
+      ]);
+      setPdfReportData({
+        userName: name,
+        periodName: formatMonthYear(month, year),
+        summary,
+        transactions: txs,
+      });
+    } catch (err) {
+      showToast(err.message || 'Erro ao gerar relatório.', 'error');
+    }
+  };
+
+  const handleExportBackup = async () => {
+    try {
+      await exportDatabaseBackup();
+      showToast('Backup JSON exportado com sucesso!', 'success');
+    } catch (err) {
+      showToast('Erro ao exportar backup.', 'error');
+    }
+  };
+
+  const handleImportBackup = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          await importDatabaseBackup(event.target.result);
+          showToast('Dados restaurados com sucesso!', 'success');
+          loadUser();
+          loadCategories();
+          loadNotifConfig();
+        } catch (err) {
+          showToast(err.message || 'Erro ao restaurar backup.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   // ---- Handlers de GPT ----
@@ -356,6 +431,56 @@ const SettingsPage = () => {
           </div>
         </div>
 
+        {/* ---- Exportação e Backup de Dados ---- */}
+        <div className="settings-section">
+          <p className="settings-section__title">GERENCIAMENTO DE DADOS</p>
+          <div className="og-card">
+            <div className="og-settings-item" onClick={handleExportCSV}>
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">📊</div>
+                <div>
+                  <p className="og-settings-item__title">Exportar Extrato (CSV/Excel)</p>
+                  <p className="og-settings-item__subtitle">Baixar planilha de lançamentos do mês</p>
+                </div>
+              </div>
+              <span className="og-settings-item__arrow">›</span>
+            </div>
+
+            <div className="og-settings-item" onClick={handleExportPDF}>
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">🖨️</div>
+                <div>
+                  <p className="og-settings-item__title">Gerar Relatório em PDF</p>
+                  <p className="og-settings-item__subtitle">Imprimir ou salvar relatório do mês</p>
+                </div>
+              </div>
+              <span className="og-settings-item__arrow">›</span>
+            </div>
+
+            <div className="og-settings-item" onClick={handleExportBackup}>
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">💾</div>
+                <div>
+                  <p className="og-settings-item__title">Fazer Backup dos Dados</p>
+                  <p className="og-settings-item__subtitle">Exportar arquivo JSON com suas finanças</p>
+                </div>
+              </div>
+              <span className="og-settings-item__arrow">›</span>
+            </div>
+
+            <div className="og-settings-item" onClick={handleImportBackup}>
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">📥</div>
+                <div>
+                  <p className="og-settings-item__title">Restaurar Backup</p>
+                  <p className="og-settings-item__subtitle">Importar dados de um arquivo JSON</p>
+                </div>
+              </div>
+              <span className="og-settings-item__arrow">›</span>
+            </div>
+          </div>
+        </div>
+
         {/* ---- Sobre ---- */}
         <div className="settings-section">
           <p className="settings-section__title">SOBRE</p>
@@ -423,6 +548,17 @@ const SettingsPage = () => {
             </button>
           </div>
         </>
+      )}
+
+      {/* Modal de Relatório PDF */}
+      {pdfReportData && (
+        <PDFReportModal
+          onClose={() => setPdfReportData(null)}
+          userName={pdfReportData.userName}
+          periodName={pdfReportData.periodName}
+          summary={pdfReportData.summary}
+          transactions={pdfReportData.transactions}
+        />
       )}
     </div>
   );

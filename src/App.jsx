@@ -110,7 +110,9 @@ const App = ({ dbReady }) => {
   if (!dbReady || onboardingDone === null) {
     return (
       <div className="app-splash">
-        <div className="app-splash__icon">💰</div>
+        <div className="app-splash__icon">
+          <img src="./img/logo.png" alt="OrganizaGrana" className="app-splash__logo-img" />
+        </div>
         <h1 className="app-splash__name">OrganizaGrana</h1>
         <div className="app-splash__loader">
           <div className="app-splash__loader-bar" />

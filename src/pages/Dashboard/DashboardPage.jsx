@@ -18,16 +18,16 @@ import './DashboardPage.css';
 
 const DashboardPage = () => {
   const { openTransactionSheet, refreshTrigger, showToast } = useApp();
-  const [summary, setSummary]   = useState(null);
-  const [recent, setRecent]     = useState([]);
-  const [cards, setCards]       = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [recent, setRecent] = useState([]);
+  const [cards, setCards] = useState([]);
   const [cardsData, setCardsData] = useState({});
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState('expense');
   const [userName, setUserName] = useState('');
   const [showAiSheet, setShowAiSheet] = useState(false);
-  const [showAiChat, setShowAiChat]   = useState(false);
+  const [showAiChat, setShowAiChat] = useState(false);
   const [showShoppingLists, setShowShoppingLists] = useState(false);
 
   const { month, year } = getCurrentMonthYear();
@@ -148,7 +148,7 @@ const DashboardPage = () => {
             onClick={() => setShowAiSheet(true)}
           >
             <div className="og-quick-btn__icon">🤖</div>
-            <span className="og-quick-btn__label">Por Foto</span>
+            <span className="og-quick-btn__label">IA</span>
           </button>
           <button
             className="og-quick-btn og-quick-btn--shopping"

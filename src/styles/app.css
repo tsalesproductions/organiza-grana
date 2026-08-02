@@ -16,8 +16,20 @@
   animation: fadeIn var(--transition-base) ease;
 }
 .app-splash__icon {
-  font-size: 56px;
-  animation: scaleIn var(--transition-spring) forwards;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-splash__logo-img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.25));
+  animation: splashPulse 2s infinite ease-in-out;
+}
+@keyframes splashPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
 }
 .app-splash__name {
   font-size: var(--font-size-2xl);

@@ -127,15 +127,16 @@ export const initDatabase = async () => {
         created_at  TEXT DEFAULT (datetime('now', 'localtime'))
       )`
     },
-    // Categorias com ícone e cor
+    // Categorias com ícone, cor e teto orçamentário
     {
       sql: `CREATE TABLE IF NOT EXISTS categories (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        name        TEXT NOT NULL,
-        icon        TEXT NOT NULL,
-        color       TEXT NOT NULL,
-        type        TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-        is_default  INTEGER DEFAULT 0
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        name         TEXT NOT NULL,
+        icon         TEXT NOT NULL,
+        color        TEXT NOT NULL,
+        type         TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+        is_default   INTEGER DEFAULT 0,
+        budget_limit REAL DEFAULT 0
       )`
     },
     // Cartões de crédito
@@ -218,6 +219,11 @@ export const initDatabase = async () => {
   } catch (_) {}
   try {
     await executeSql('ALTER TABLE user_config ADD COLUMN gpt_api_key TEXT', []);
+  } catch (_) {}
+
+  // --- Migration: adiciona coluna budget_limit se não existir ---
+  try {
+    await executeSql('ALTER TABLE categories ADD COLUMN budget_limit REAL DEFAULT 0', []);
   } catch (_) {}
 
   // --- Popula categorias padrão (apenas se ainda não existirem) ---

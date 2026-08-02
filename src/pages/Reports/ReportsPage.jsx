@@ -9,30 +9,40 @@ import {
 } from 'recharts';
 import { useApp } from '../../store/AppContext.jsx';
 import { getExpensesByCategory, getMonthlyHistory, getMonthSummary } from '../../services/transactions.js';
-import { formatCurrency } from '../../utils/currency.js';
+import { getCategoryBudgets, updateCategoryBudget } from '../../services/budgets.js';
+import { formatCurrency, parseCurrencyInput } from '../../utils/currency.js';
 import { formatMonthYear, navigateMonth } from '../../utils/dates.js';
+import FinancialDiagnosticCard from '../../components/reports/FinancialDiagnosticCard.jsx';
+import InvestmentSimulatorCard from '../../components/reports/InvestmentSimulatorCard.jsx';
 import './ReportsPage.css';
 
 const ReportsPage = () => {
-  const { selectedPeriod, setSelectedPeriod } = useApp();
+  const { selectedPeriod, setSelectedPeriod, showToast } = useApp();
   const { month, year } = selectedPeriod;
 
   const [categoriesData, setCategoriesData] = useState([]);
   const [monthlyHistory, setMonthlyHistory] = useState([]);
+  const [budgetsData, setBudgetsData]       = useState([]);
   const [summary, setSummary]               = useState(null);
   const [loading, setLoading]               = useState(true);
+
+  // Modal para editar teto
+  const [editBudgetCat, setEditBudgetCat]   = useState(null);
+  const [budgetInputValue, setBudgetInputValue] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [cats, history, sum] = await Promise.all([
+      const [cats, history, sum, bdgts] = await Promise.all([
         getExpensesByCategory(month, year),
         getMonthlyHistory(6),
         getMonthSummary(month, year),
+        getCategoryBudgets(month, year),
       ]);
       setCategoriesData(cats);
       setMonthlyHistory(history);
       setSummary(sum);
+      setBudgetsData(bdgts);
     } catch (err) {
       console.error('[Reports] Erro:', err);
     } finally {
@@ -41,6 +51,20 @@ const ReportsPage = () => {
   }, [month, year]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleSaveBudget = async () => {
+    if (!editBudgetCat) return;
+    try {
+      const numericVal = parseCurrencyInput(budgetInputValue);
+      await updateCategoryBudget(editBudgetCat.id, numericVal);
+      showToast('Teto orçamentário atualizado!', 'success');
+      setEditBudgetCat(null);
+      setBudgetInputValue('');
+      await loadData();
+    } catch (err) {
+      showToast('Erro ao atualizar teto.', 'error');
+    }
+  };
 
   // Formata o tooltip do BarChart
   const formatBarTooltip = (value) => formatCurrency(value);
@@ -216,10 +240,125 @@ const ReportsPage = () => {
           )}
         </div>
 
+        {/* Diagnóstico 50/30/20 & Simulador de Futuro */}
+        <FinancialDiagnosticCard month={month} year={year} />
+        <InvestmentSimulatorCard month={month} year={year} />
+
+        {/* Tetos Orçamentários */}
+        <div className="og-card og-card--padded">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+            <h2 className="og-section-title" style={{ margin: 0 }}>
+              🎯 Tetos Orçamentários
+            </h2>
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+              Metas por Categoria
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="skeleton" style={{ height: 160, borderRadius: 12 }} />
+          ) : budgetsData.length === 0 ? (
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>Nenhuma categoria de despesa cadastrada.</p>
+          ) : (
+            <div className="reports-budgets-list">
+              {budgetsData.map((cat) => {
+                let statusColor = 'var(--color-border)';
+                let statusEmoji = '⚪';
+                if (cat.status === 'green') { statusColor = '#00B894'; statusEmoji = '🟢'; }
+                else if (cat.status === 'yellow') { statusColor = '#FDCB6E'; statusEmoji = '🟡'; }
+                else if (cat.status === 'red') { statusColor = '#FF7675'; statusEmoji = '🔴'; }
+
+                return (
+                  <div key={cat.id} className="reports-budget-item">
+                    <div className="reports-budget-item__top">
+                      <div className="reports-budget-item__title">
+                        <span>{cat.icon}</span>
+                        <span className="reports-budget-item__name">{cat.name}</span>
+                        {cat.budget_limit > 0 && <span style={{ fontSize: 11 }}>{statusEmoji}</span>}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="reports-budget-item__values">
+                          <strong>{formatCurrency(cat.current_spent)}</strong>
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                            {cat.budget_limit > 0 ? ` / ${formatCurrency(cat.budget_limit)}` : ' (sem teto)'}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          className="og-btn og-btn--ghost og-btn--sm"
+                          style={{ padding: '2px 6px', fontSize: 13 }}
+                          onClick={() => {
+                            setEditBudgetCat(cat);
+                            setBudgetInputValue(cat.budget_limit > 0 ? String(cat.budget_limit) : '');
+                          }}
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    </div>
+
+                    {cat.budget_limit > 0 && (
+                      <div className="reports-budget-track">
+                        <div
+                          className="reports-budget-fill"
+                          style={{
+                            width: `${Math.min(100, cat.percentage)}%`,
+                            background: statusColor,
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Espaçador para o fundo não colar no bottom tab bar */}
         <div style={{ height: 'calc(var(--tab-bar-height) + var(--safe-area-bottom) + var(--space-8))' }} />
 
       </div>
+
+      {/* Modal Editar Teto */}
+      {editBudgetCat && (
+        <>
+          <div className="og-sheet-overlay" onClick={() => setEditBudgetCat(null)} />
+          <div className="og-sheet animate-slide-up">
+            <div className="og-sheet__handle" />
+            <h2 className="og-sheet__title">Definir Teto: {editBudgetCat.icon} {editBudgetCat.name}</h2>
+            <div className="og-input-group" style={{ marginBottom: 'var(--space-4)' }}>
+              <label className="og-label">Teto Máximo Mensal (R$)</label>
+              <input
+                className="og-input"
+                type="number"
+                step="0.01"
+                placeholder="Ex: 1200.00 (digite 0 para remover teto)"
+                value={budgetInputValue}
+                onChange={(e) => setBudgetInputValue(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <button
+                type="button"
+                className="og-btn og-btn--ghost og-btn--full"
+                onClick={() => setEditBudgetCat(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="og-btn og-btn--primary og-btn--full"
+                onClick={handleSaveBudget}
+              >
+                Salvar Teto
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
