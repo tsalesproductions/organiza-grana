@@ -169,6 +169,8 @@ export const initDatabase = async () => {
         installment_current   INTEGER,
         installment_group_id  TEXT,
         notes                 TEXT,
+        payment_code          TEXT,
+        status                TEXT DEFAULT 'paid',
         created_at            TEXT DEFAULT (datetime('now', 'localtime'))
       )`
     },
@@ -224,6 +226,14 @@ export const initDatabase = async () => {
   // --- Migration: adiciona coluna budget_limit se não existir ---
   try {
     await executeSql('ALTER TABLE categories ADD COLUMN budget_limit REAL DEFAULT 0', []);
+  } catch (_) {}
+
+  // --- Migration: adiciona colunas de pagamento se não existirem ---
+  try {
+    await executeSql('ALTER TABLE transactions ADD COLUMN payment_code TEXT', []);
+  } catch (_) {}
+  try {
+    await executeSql('ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT "paid"', []);
   } catch (_) {}
 
   // --- Popula categorias padrão (apenas se ainda não existirem) ---

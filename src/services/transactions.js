@@ -17,7 +17,7 @@ export const ensureIndefiniteRecurrencesUpTo = async (month, year) => {
   // Busca todos os grupos únicos de recorrência por tempo indeterminado
   const result = await executeSql(
     `SELECT DISTINCT installment_group_id, description, amount, type, payment_method, 
-                     card_id, category_id, notes
+                     card_id, category_id, notes, payment_code, status
      FROM transactions
      WHERE recurrence_type = 'monthly_indefinite' AND installment_group_id IS NOT NULL`,
     []
@@ -55,8 +55,8 @@ export const ensureIndefiniteRecurrencesUpTo = async (month, year) => {
         sql: `INSERT INTO transactions
               (description, amount, type, payment_method, card_id, category_id, date,
                is_recurring, recurrence_type, installment_total, installment_current,
-               installment_group_id, notes)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly_indefinite', NULL, ?, ?, ?)`,
+               installment_group_id, notes, payment_code, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly_indefinite', NULL, ?, ?, ?, ?, ?)`,
         params: [
           g.description,
           g.amount,
@@ -68,6 +68,8 @@ export const ensureIndefiniteRecurrencesUpTo = async (month, year) => {
           currentCount,
           g.installment_group_id,
           g.notes || null,
+          g.payment_code || null,
+          g.status || 'paid',
         ],
       });
     }
@@ -185,6 +187,8 @@ export const getMonthSummary = async (month, year) => {
     totalExpenseCash:  0,
     totalExpenseCard:  0,
     totalExpense:      0,
+    totalExpensePaid:  0,
+    totalExpensePending: 0,
     balance:           0,
   };
 
@@ -193,6 +197,13 @@ export const getMonthSummary = async (month, year) => {
       summary.totalIncome += t.amount;
     } else {
       summary.totalExpense += t.amount;
+      
+      if (t.status === 'pending') {
+        summary.totalExpensePending += t.amount;
+      } else {
+        summary.totalExpensePaid += t.amount;
+      }
+
       if (t.payment_method === 'cash') {
         summary.totalExpenseCash += t.amount;
       } else {
@@ -215,6 +226,7 @@ export const createTransaction = async (data) => {
     description, amount, type, payment_method, card_id,
     category_id, date, is_recurring, recurrence_type,
     installment_total, installment_months, notes,
+    payment_code, status,
   } = data;
 
   // Caso 1: Parcelado (installment) -> Ex: 10x de R$ 100
@@ -232,13 +244,14 @@ export const createTransaction = async (data) => {
         sql: `INSERT INTO transactions
               (description, amount, type, payment_method, card_id, category_id, date,
                is_recurring, recurrence_type, installment_total, installment_current,
-               installment_group_id, notes)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'installment', ?, ?, ?, ?)`,
+               installment_group_id, notes, payment_code, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'installment', ?, ?, ?, ?, ?, ?)`,
         params: [
           `${description} (${i + 1}/${installment_total})`,
           monthlyAmount,
           type, payment_method, card_id || null, category_id || null,
           formatDate(installmentDate), installment_total, i + 1, groupId, notes || null,
+          payment_code || null, status || 'paid',
         ],
       });
     }
@@ -263,13 +276,14 @@ export const createTransaction = async (data) => {
         sql: `INSERT INTO transactions
               (description, amount, type, payment_method, card_id, category_id, date,
                is_recurring, recurrence_type, installment_total, installment_current,
-               installment_group_id, notes)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly_indefinite', NULL, ?, ?, ?)`,
+               installment_group_id, notes, payment_code, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly_indefinite', NULL, ?, ?, ?, ?, ?)`,
         params: [
           description,
           amount,
           type, payment_method, card_id || null, category_id || null,
           formatDate(recurringDate), i + 1, groupId, notes || null,
+          payment_code || null, status || 'paid',
         ],
       });
     }
@@ -292,13 +306,14 @@ export const createTransaction = async (data) => {
         sql: `INSERT INTO transactions
               (description, amount, type, payment_method, card_id, category_id, date,
                is_recurring, recurrence_type, installment_total, installment_current,
-               installment_group_id, notes)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly', ?, ?, ?, ?)`,
+               installment_group_id, notes, payment_code, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'monthly', ?, ?, ?, ?, ?, ?)`,
         params: [
           `${description} (${i + 1}/${installment_months})`,
           amount,
           type, payment_method, card_id || null, category_id || null,
           formatDate(recurringDate), installment_months, i + 1, groupId, notes || null,
+          payment_code || null, status || 'paid',
         ],
       });
     }
@@ -310,10 +325,10 @@ export const createTransaction = async (data) => {
   // Caso 4: Transação Simples (Única)
   await executeSql(
     `INSERT INTO transactions
-     (description, amount, type, payment_method, card_id, category_id, date, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     (description, amount, type, payment_method, card_id, category_id, date, notes, payment_code, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [description, amount, type, payment_method,
-     card_id || null, category_id || null, date, notes || null]
+     card_id || null, category_id || null, date, notes || null, payment_code || null, status || 'paid']
   );
 };
 
@@ -321,16 +336,16 @@ export const createTransaction = async (data) => {
  * Atualiza uma transação existente (suporta updateMode: 'single', 'future', 'all').
  */
 export const updateTransaction = async (id, data, updateMode = 'single') => {
-  const { description, amount, type, payment_method, card_id, category_id, date, notes } = data;
+  const { description, amount, type, payment_method, card_id, category_id, date, notes, payment_code, status } = data;
 
   if (updateMode === 'single') {
     await executeSql(
       `UPDATE transactions
        SET description=?, amount=?, type=?, payment_method=?, card_id=?,
-           category_id=?, date=?, notes=?
+           category_id=?, date=?, notes=?, payment_code=?, status=?
        WHERE id=?`,
       [description, amount, type, payment_method,
-       card_id || null, category_id || null, date, notes || null, id]
+       card_id || null, category_id || null, date, notes || null, payment_code || null, status || 'paid', id]
     );
     return;
   }
@@ -342,10 +357,10 @@ export const updateTransaction = async (id, data, updateMode = 'single') => {
     await executeSql(
       `UPDATE transactions
        SET description=?, amount=?, type=?, payment_method=?, card_id=?,
-           category_id=?, date=?, notes=?
+           category_id=?, date=?, notes=?, payment_code=?, status=?
        WHERE id=?`,
       [description, amount, type, payment_method,
-       card_id || null, category_id || null, date, notes || null, id]
+       card_id || null, category_id || null, date, notes || null, payment_code || null, status || 'paid', id]
     );
     return;
   }
@@ -356,9 +371,9 @@ export const updateTransaction = async (id, data, updateMode = 'single') => {
   if (updateMode === 'all') {
     await executeSql(
       `UPDATE transactions
-       SET amount=?, type=?, payment_method=?, card_id=?, category_id=?, notes=?
+       SET amount=?, type=?, payment_method=?, card_id=?, category_id=?, notes=?, payment_code=?, status=?
        WHERE installment_group_id=?`,
-      [amount, type, payment_method, card_id || null, category_id || null, notes || null, groupId]
+      [amount, type, payment_method, card_id || null, category_id || null, notes || null, payment_code || null, status || 'paid', groupId]
     );
     return;
   }
@@ -387,9 +402,9 @@ export const updateTransaction = async (id, data, updateMode = 'single') => {
 
       queries.push({
         sql: `UPDATE transactions
-              SET amount=?, type=?, payment_method=?, card_id=?, category_id=?, date=?, notes=?
+              SET amount=?, type=?, payment_method=?, card_id=?, category_id=?, date=?, notes=?, payment_code=?, status=?
               WHERE id=?`,
-        params: [amount, type, payment_method, card_id || null, category_id || null, updatedDate, notes || null, tx.id],
+        params: [amount, type, payment_method, card_id || null, category_id || null, updatedDate, notes || null, payment_code || null, status || 'paid', tx.id],
       });
     }
 

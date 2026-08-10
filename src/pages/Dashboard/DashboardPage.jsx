@@ -113,9 +113,19 @@ const DashboardPage = () => {
               <span>↑</span>
               <span>{formatCurrency(summary?.totalIncome ?? 0)}</span>
             </div>
-            <div className="og-hero-card__stat">
-              <span>↓</span>
-              <span>{formatCurrency(summary?.totalExpense ?? 0)}</span>
+            <div className="og-hero-card__stat" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>↓</span>
+                <span>{formatCurrency(summary?.totalExpense ?? 0)}</span>
+              </div>
+              {(summary?.totalExpensePending > 0 || summary?.totalExpensePaid > 0) && (
+                <div style={{ fontSize: '0.75rem', opacity: 0.85, display: 'flex', gap: '8px', fontWeight: 'normal' }}>
+                  <span>✅ {formatCurrency(summary.totalExpensePaid ?? 0)}</span>
+                  <span style={{ color: summary.totalExpensePending > 0 ? '#ffd32a' : 'inherit' }}>
+                    ⏳ {formatCurrency(summary.totalExpensePending ?? 0)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

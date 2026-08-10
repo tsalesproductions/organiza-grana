@@ -24,6 +24,8 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
   const [categoryId, setCategoryId]   = useState(editData?.category_id || null);
   const [paymentMethod, setPaymentMethod] = useState(editData?.payment_method || 'cash');
   const [cardId, setCardId]           = useState(editData?.card_id || null);
+  const [status, setStatus]           = useState(editData?.status || 'paid');
+  const [paymentCode, setPaymentCode] = useState(editData?.payment_code || '');
   
   // Recorrência & Parcelas (Para Receitas e Despesas)
   const [recurrenceMode, setRecurrenceMode] = useState(
@@ -108,6 +110,8 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
       installment_total: recurrenceMode === 'installment' ? installmentTotal : null,
       installment_months: recurrenceMode === 'monthly' && !indefinite ? installmentMonths : null,
       notes: notes.trim() || null,
+      payment_code: paymentCode.trim() || null,
+      status: type === 'income' ? 'paid' : status,
     };
 
     // Se estiver editando e for um item de grupo recorrente e não foi escolhido o modo de atualização
@@ -388,6 +392,33 @@ const TransactionForm = ({ initialType = 'expense', editData = null, onSave, onC
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Status e Código de Pagamento (APENAS DESPESAS) */}
+        {type === 'expense' && (
+          <div className="og-input-group" style={{ background: 'var(--bg-card)', padding: 'var(--space-3)', borderRadius: '12px' }}>
+            <label className="og-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: 'var(--space-3)' }}>
+              <span>Conta Pendente (A Pagar)?</span>
+              <input 
+                type="checkbox" 
+                checked={status === 'pending'}
+                onChange={(e) => setStatus(e.target.checked ? 'pending' : 'paid')}
+                style={{ width: '20px', height: '20px', accentColor: 'var(--danger-color)' }}
+              />
+            </label>
+            <p className="transaction-form__hint" style={{ marginTop: '-8px', marginBottom: 'var(--space-3)' }}>
+              Marque se o pagamento ainda será realizado no futuro.
+            </p>
+            
+            <label className="og-label">Código de Boleto ou Chave PIX</label>
+            <input
+              className="og-input"
+              type="text"
+              placeholder="Cole o código aqui..."
+              value={paymentCode}
+              onChange={(e) => setPaymentCode(e.target.value)}
+            />
           </div>
         )}
 

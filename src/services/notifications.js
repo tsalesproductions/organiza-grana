@@ -79,13 +79,20 @@ export const scheduleAllNotifications = async () => {
 
   // 2. Notificações para Despesas Recorrentes
   const recurringResult = await executeSql(
-    `SELECT description, amount, date FROM transactions WHERE is_recurring = 1 AND type = 'expense'`,
+    `SELECT description, MAX(amount) as amount, MIN(date) as date 
+     FROM transactions 
+     WHERE is_recurring = 1 AND type = 'expense' 
+     GROUP BY installment_group_id`,
     []
   );
   const recurringList = rowsToArray(recurringResult.rows);
 
   recurringList.forEach((item, index) => {
-    const itemDay = new Date(item.date).getDate() || 10;
+    // Evita bug de timezone ao fazer new Date(item.date) (que pode cair no dia anterior)
+    const dateStr = item.date || '';
+    const dateParts = dateStr.split('-');
+    const itemDay = dateParts.length === 3 ? parseInt(dateParts[2], 10) : 10;
+    
     let dueDate = new Date(today.getFullYear(), today.getMonth(), itemDay, hour, minute);
     if (dueDate <= today) {
       dueDate.setMonth(dueDate.getMonth() + 1);

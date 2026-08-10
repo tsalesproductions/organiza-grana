@@ -1,0 +1,107 @@
+LICENÇA PROPRIETÁRIA SOURCE-AVAILABLE DO ORGANIZAGRANA v1.0
+
+Copyright (c) 2026 OrganizaGrana / SalesCode.
+Todos os direitos reservados.
+
+AVISO IMPORTANTE: ESTA NÃO É UMA LICENÇA OPEN SOURCE.
+O código-fonte é disponibilizado publicamente para transparência, avaliação técnica e colaboração com o projeto oficial, nos limites abaixo.
+
+1. DEFINIÇÕES
+
+1.1. "Titular" significa OrganizaGrana / SalesCode, titular dos direitos sobre as partes do Software de sua autoria.
+
+1.2. "Software" significa o código-fonte, código objeto, documentação, arquivos, interfaces, recursos e demais materiais deste projeto sobre os quais o Titular detenha direitos, excluídos componentes de terceiros sujeitos às respectivas licenças.
+
+1.3. "Repositório Oficial" significa o repositório no qual esta licença é publicada e o respectivo repositório upstream/canônico indicado pelo Titular.
+
+1.4. "Contribuição" significa código, documentação, correções, melhorias ou outros materiais enviados voluntariamente ao Repositório Oficial com a intenção de serem incorporados ao projeto.
+
+2. PERMISSÕES LIMITADAS
+
+Sujeito ao cumprimento integral desta licença, o Titular concede a você uma permissão limitada, revogável em caso de violação, não exclusiva, intransferível e sem direito de sublicenciamento para:
+
+(a) visualizar e analisar o código-fonte;
+
+(b) utilizar a funcionalidade de fork do GitHub conforme os Termos do GitHub;
+
+(c) clonar o Repositório Oficial ou o seu fork para um ambiente local de desenvolvimento;
+
+(d) modificar, compilar e executar o Software exclusivamente na medida necessária para desenvolver, validar e testar uma Contribuição destinada ao Repositório Oficial; e
+
+(e) enviar essa Contribuição por Pull Request ou por outro canal autorizado pelo Titular.
+
+A permissão acima NÃO concede direito de usar o Software como aplicativo de uso pessoal, ferramenta interna, produto, serviço ou solução de produção.
+
+3. RESTRIÇÕES
+
+Exceto mediante autorização prévia e expressa do Titular, você NÃO pode:
+
+(a) utilizar o Software, no todo ou em parte, como usuário final para gestão financeira pessoal ou para qualquer outra finalidade que não seja a preparação e o teste de uma Contribuição;
+
+(b) utilizar o Software para fins comerciais, empresariais, profissionais, internos ou de produção;
+
+(c) vender, alugar, licenciar, sublicenciar, monetizar ou explorar economicamente o Software;
+
+(d) distribuir, republicar, disponibilizar, compartilhar ou fornecer cópias do Software, modificadas ou não, fora das funcionalidades normais do GitHub necessárias à colaboração com o Repositório Oficial;
+
+(e) publicar ou distribuir APKs, executáveis, builds, pacotes, imagens de contêiner ou outras versões compiladas do Software;
+
+(f) hospedar, disponibilizar ou operar uma instância própria do Software, inclusive como SaaS, serviço web, aplicativo móvel, serviço interno ou solução para terceiros;
+
+(g) criar, manter ou distribuir um projeto, produto ou serviço independente baseado no Software ou em partes substanciais dele;
+
+(h) incorporar o Software ou partes substanciais dele em outro produto, projeto, biblioteca, serviço ou código-base;
+
+(i) remover ou alterar avisos de copyright, autoria, licença ou propriedade intelectual; ou
+
+(j) utilizar os nomes, marcas, logotipos ou identidade visual "OrganizaGrana" ou "SalesCode" de forma que sugira associação, aprovação ou origem oficial sem autorização.
+
+4. FORKS PÚBLICOS NO GITHUB
+
+Quando este repositório estiver público no GitHub, determinadas permissões de visualização, uso dentro do serviço e fork decorrem diretamente dos Termos do GitHub. Esta licença não pretende revogar direitos concedidos diretamente pelo GitHub ou pelo Titular por meio desses Termos.
+
+Qualquer permissão adicional necessária para clonar, modificar, compilar ou executar localmente o Software é concedida somente nos limites da Seção 2 desta licença.
+
+5. CONTRIBUIÇÕES
+
+Contribuições ao projeto estão sujeitas também ao arquivo CLA.md (Contributor License Agreement), quando presente no Repositório Oficial.
+
+Ao enviar intencionalmente uma Contribuição, você declara que possui os direitos necessários sobre o material enviado e concorda com os termos aplicáveis do CLA.md, salvo se existir outro acordo escrito firmado com o Titular.
+
+O Titular não é obrigado a aceitar, utilizar, publicar ou incorporar qualquer Contribuição.
+
+6. PROPRIEDADE INTELECTUAL
+
+Exceto pelas permissões expressamente concedidas nesta licença, nenhum direito, título ou participação sobre o Software é transferido a você.
+
+Todos os direitos não expressamente concedidos permanecem reservados ao Titular.
+
+7. COMPONENTES DE TERCEIROS
+
+Bibliotecas, frameworks, dependências, fontes, imagens, ícones ou outros materiais de terceiros permanecem sujeitos às respectivas licenças e termos de seus titulares.
+
+Esta licença se aplica apenas aos materiais sobre os quais OrganizaGrana / SalesCode detenha direitos suficientes para licenciá-los.
+
+8. ENCERRAMENTO DA PERMISSÃO
+
+As permissões concedidas por esta licença terminam automaticamente em caso de violação de seus termos.
+
+Após o encerramento, você deverá cessar os usos autorizados por esta licença e excluir as cópias locais do Software sob seu controle, sem prejuízo de eventuais direitos que decorram diretamente dos Termos do GitHub ou de normas legais que não possam ser afastadas contratualmente.
+
+9. AUSÊNCIA DE GARANTIA
+
+O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA" ("AS IS"), SEM GARANTIAS EXPRESSAS OU IMPLÍCITAS, NA MÁXIMA EXTENSÃO PERMITIDA PELA LEI APLICÁVEL.
+
+NA MÁXIMA EXTENSÃO PERMITIDA PELA LEI, O TITULAR NÃO SERÁ RESPONSÁVEL POR DANOS DECORRENTES DO ACESSO, DESENVOLVIMENTO, TESTE OU USO NÃO AUTORIZADO DO SOFTWARE.
+
+10. DIREITOS LEGAIS INDISPONÍVEIS
+
+Nada nesta licença pretende excluir ou restringir direitos, exceções ou limitações legais que não possam ser validamente afastados por contrato.
+
+11. LEI APLICÁVEL
+
+Esta licença será interpretada de acordo com as leis da República Federativa do Brasil, sem prejuízo de normas imperativas eventualmente aplicáveis.
+
+12. AUTORIZAÇÕES ESPECIAIS
+
+Qualquer uso não expressamente permitido nesta licença exige autorização prévia e expressa do Titular.

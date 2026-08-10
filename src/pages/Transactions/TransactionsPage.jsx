@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../store/AppContext.jsx';
-import { getTransactionsByMonth, deleteTransaction } from '../../services/transactions.js';
+import { getTransactionsByMonth, deleteTransaction, updateTransaction } from '../../services/transactions.js';
 import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, navigateMonth, groupByDate, getDateLabel } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
@@ -48,6 +48,29 @@ const TransactionsPage = () => {
   // ---- Handlers de deleção ----
   const handleDelete = (t) => {
     setConfirmState({ open: true, transaction: t, step: 'initial' });
+  };
+
+  const handleMarkAsPaid = async (t) => {
+    try {
+      await updateTransaction(t.id, { ...t, status: 'paid' }, 'single');
+      await loadData();
+      showToast('Lançamento marcado como pago!', 'success');
+    } catch (err) {
+      showToast('Erro ao atualizar status.', 'error');
+    }
+  };
+
+  const handleCopyCode = async (code) => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(code);
+        showToast('Código copiado para a área de transferência!', 'success');
+      } else {
+        showToast('Área de transferência indisponível.', 'warning');
+      }
+    } catch (err) {
+      showToast('Erro ao copiar código.', 'error');
+    }
   };
 
   const closeConfirm = () => {
@@ -234,18 +257,50 @@ const TransactionsPage = () => {
                             {t.installment_current}/{t.installment_total}m
                           </span>
                         )}
+                        {t.status === 'pending' && (
+                          <span className="og-badge" style={{ background: '#fff9c4', color: '#B8810A' }}>
+                            ⏳ A Pagar
+                          </span>
+                        )}
+                        {t.status === 'paid' && t.payment_code && (
+                          <span className="og-badge" style={{ background: '#e0f7fa', color: '#00B894' }}>
+                            ✅ Pago
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                       <span className={`og-transaction-item__amount ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
                         {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
                       </span>
-                      <button
-                        className="transactions-delete-btn"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
-                      >
-                        🗑
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {t.status === 'pending' && (
+                          <button
+                            className="transactions-delete-btn"
+                            style={{ background: '#00B894', color: '#fff' }}
+                            onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(t); }}
+                            title="Marcar como Pago"
+                          >
+                            ✅
+                          </button>
+                        )}
+                        {t.payment_code && (
+                          <button
+                            className="transactions-delete-btn"
+                            style={{ background: 'var(--color-primary)', color: '#fff' }}
+                            onClick={(e) => { e.stopPropagation(); handleCopyCode(t.payment_code); }}
+                            title="Copiar Código"
+                          >
+                            📄
+                          </button>
+                        )}
+                        <button
+                          className="transactions-delete-btn"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
+                        >
+                          🗑
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
