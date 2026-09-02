@@ -20,8 +20,11 @@
 
 <div align="center">
   <h2>Interface e Telas do Aplicativo</h2>
-  <p><i>Visão geral da interface do OrganizaGrana:</i></p>
+  <p><i>Visão geral da interface do OrganizaGrana.</i></p>
+  <p><sub><b>Aviso:</b> Todos os dados, valores, faturas e transações exibidos nas imagens são estritamente fictícios (dados mockados) para fins demonstrativos e não refletem faturamento, receitas ou informações financeiras reais.</sub></p>
+</div>
 
+<div align="center">
   <table>
     <tr>
       <td align="center" width="33%">
@@ -95,6 +98,9 @@
   </table>
 </div>
 
+> [!NOTE]
+> **Dados Demonstrativos:** Todas as informações, saldos, transações, nomes de instituições e valores exibidos nas capturas de tela acima são dados fictícios (mockados), criados exclusivamente para demonstrar o layout, a interface e o funcionamento dos componentes do aplicativo. Eles não representam faturamento, receitas ou movimentações financeiras reais.
+
 ---
 
 > [!IMPORTANT]
@@ -160,7 +166,7 @@ Tudo foi desenvolvido de forma ágil utilizando **Apache Cordova**, **React** e 
 ---
 
 ### Inteligência Artificial Integrada (GPT e Gemini)
-* **Leitura Automática de Comprovantes:** envio de fotos ou capturas de notas fiscais e faturas (com suporte a até 3 imagens simultâneas) para extração automática de valor, data, descrição e categoria.
+* **Leitura Automática de Comprovantes e Etiquetas:** envio de fotos ou capturas de notas fiscais, faturas e etiquetas de produtos (com suporte a até 3 imagens simultâneas) para extração inteligente de valores, datas, descrições e categorias.
 * **Instruções Personalizadas no Prompt:** possibilidade de adicionar notas e regras para a IA (ex: "divida em 2 vezes", "desconsidere o frete").
 * **Consultor Financeiro Interativo:** assistente em chat para diagnóstico financeiro, orientação de metas e análise de consumo.
 * **Privacidade e Modelo BYOK:** o aplicativo **não fornece** chaves de API. O usuário deve gerar sua chave na [documentação da OpenAI](https://platform.openai.com/docs/quickstart) ou no [Google AI Studio](https://aistudio.google.com/) e configurá-la diretamente nas preferências do app. As credenciais e dados permanecem salvos exclusivamente no armazenamento local do aparelho.
@@ -173,10 +179,12 @@ Tudo foi desenvolvido de forma ágil utilizando **Apache Cordova**, **React** e 
 ---
 
 ### Listas de Compras Integradas
-* **Planejamento de Mercado:** criação, gerenciamento e arquivamento de listas de compras.
-* **Calculadora de Carrinho em Tempo Real:** cálculo automático do total acumulado conforme os produtos são marcados durante as compras.
-* **Controle de Itens:** quantidade, valor unitário, inclusão de fotos de itens/etiquetas e adição rápida de produtos avulsos.
-* **Conversão Automática em Despesa:** ao concluir a compra, um toque converte o valor total da lista diretamente em uma despesa no extrato do mês atual.
+* **Planejamento de Mercado:** criação, edição, acompanhamento e arquivamento de listas de compras completas.
+* **Gestão e Controle de Itens:** adição e remoção de produtos com definição de quantidade, valor unitário e anexação de fotos de produtos ou etiquetas de preço.
+* **Reconhecimento de Preços por IA via Foto:** envio da foto do produto ou da etiqueta de preço na gôndola para a IA analisar a imagem e extrair o valor unitário correto automaticamente, restando ao usuário apenas definir a quantidade.
+* **Lançamento Rápido de Itens Avulsos:** registro ágil de itens ou categorias informando múltiplos preços e quantidades em sequência — ideal para momentos de correria no supermercado ou ao pegar itens de marcas e valores diferentes sem burocracia.
+* **Calculadora de Carrinho em Tempo Real:** cálculo automático do total acumulado conforme os produtos são marcados no carrinho durante as compras.
+* **Conversão Automática em Despesa:** ao concluir a compra, um único toque converte o valor total da lista diretamente em uma despesa registrada no extrato mensal.
 
 <div align="center">
   <img src="docs/lista-compras.png" alt="Listas de Compras" width="250" style="border-radius: 12px; margin: 6px;" />
