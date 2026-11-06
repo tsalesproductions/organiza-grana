@@ -1,7 +1,7 @@
 {
   "name": "com.salescode.organizagrana",
   "displayName": "OrganizaGrana",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Gestao Financeira Pessoal - 100% offline",
   "main": "index.js",
   "scripts": {
