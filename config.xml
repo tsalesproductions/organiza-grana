@@ -1,7 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.salescode.organizagrana" version="1.2.1"
+<widget id="com.salescode.organizagrana" version="1.2.2"
   xmlns="http://www.w3.org/ns/widgets"
-  xmlns:cdv="http://cordova.apache.org/ns/1.0">
+  xmlns:cdv="http://cordova.apache.org/ns/1.0"
+  xmlns:android="http://schemas.android.com/apk/res/android">
 
   <name>OrganizaGrana</name>
   <description>Gestao Financeira Pessoal</description>
@@ -43,9 +44,20 @@
   <plugin name="cordova-plugin-device" spec="latest" />
   <plugin name="cordova-plugin-file" spec="latest" />
   <plugin name="cordova-plugin-x-socialsharing" spec="latest" />
+  <plugin name="cordova-plugin-app-version" spec="latest" />
+  <plugin name="cordova-plugin-speechrecognition" spec="latest" />
 
   <!-- Configurações para plataforma Android -->
   <platform name="android">
+    <config-file target="AndroidManifest.xml" parent="/manifest">
+      <uses-permission android:name="android.permission.RECORD_AUDIO" />
+      <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    </config-file>
+    <config-file target="AndroidManifest.xml" parent="/manifest/queries">
+      <intent>
+        <action android:name="android.speech.RecognitionService" />
+      </intent>
+    </config-file>
     <icon src="public/img/logo.png" density="ldpi" />
     <icon src="public/img/logo.png" density="mdpi" />
     <icon src="public/img/logo.png" density="hdpi" />

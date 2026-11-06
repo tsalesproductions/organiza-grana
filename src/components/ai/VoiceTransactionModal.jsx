@@ -40,8 +40,74 @@ const VoiceTransactionModal = ({ open, onClose, onSave, showToast }) => {
     return () => stopListening();
   }, [open]);
 
+  const doCordovaListening = () => {
+    const cordovaSpeech = window.plugins?.speechRecognition;
+    if (!cordovaSpeech) return;
+
+    setIsRecording(true);
+    setError('');
+
+    cordovaSpeech.startListening(
+      (matches) => {
+        setIsRecording(false);
+        if (Array.isArray(matches) && matches.length > 0) {
+          const text = matches[0];
+          setTranscript(text);
+          setManualText(text);
+        }
+      },
+      (err) => {
+        setIsRecording(false);
+        console.warn('[Cordova Speech] Erro:', err);
+        // Códigos normais de cancelamento ou timeout
+        if (err !== 2 && err !== 'No match' && err !== 'User cancelled') {
+          setError('Não conseguimos ouvir com clareza. Fale novamente ou digite abaixo.');
+        }
+      },
+      {
+        language: 'pt-BR',
+        matches: 5,
+        prompt: 'Diga o lançamento (ex: Almoço 35 reais)',
+        showPartial: false,
+        showPopup: true,
+      }
+    );
+  };
+
   const startListening = () => {
     setError('');
+
+    // 1. Cordova Speech Recognition Plugin (Dispositivo Android nativo com permissões)
+    const cordovaSpeech = window.plugins?.speechRecognition;
+    if (cordovaSpeech) {
+      cordovaSpeech.hasPermission(
+        (hasPerm) => {
+          if (!hasPerm) {
+            cordovaSpeech.requestPermission(
+              () => doCordovaListening(),
+              (err) => {
+                console.warn('[Speech] Permissão negada:', err);
+                setError('Permissão de microfone negada. Conceda acesso nas configurações ou digite abaixo.');
+              }
+            );
+          } else {
+            doCordovaListening();
+          }
+        },
+        () => {
+          // Se falhar ao verificar permissão, tenta pedir direto
+          cordovaSpeech.requestPermission(
+            () => doCordovaListening(),
+            () => {
+              setError('Permissão de microfone necessária para falar.');
+            }
+          );
+        }
+      );
+      return;
+    }
+
+    // 2. Web Speech API (Fallback para Navegador Desktop)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setError('Reconhecimento de voz não suportado neste navegador. Digite abaixo.');
@@ -67,7 +133,9 @@ const VoiceTransactionModal = ({ open, onClose, onSave, showToast }) => {
       recognition.onerror = (e) => {
         console.warn('[Speech] Erro:', e);
         setIsRecording(false);
-        if (e.error !== 'no-speech') {
+        if (e.error === 'not-allowed') {
+          setError('Permissão de microfone negada. Ative nas permissões do app.');
+        } else if (e.error !== 'no-speech') {
           setError('Não conseguimos ouvir. Fale novamente ou digite abaixo.');
         }
       };
@@ -85,6 +153,14 @@ const VoiceTransactionModal = ({ open, onClose, onSave, showToast }) => {
   };
 
   const stopListening = () => {
+    if (window.plugins?.speechRecognition) {
+      try {
+        window.plugins.speechRecognition.stopListening(
+          () => setIsRecording(false),
+          () => setIsRecording(false)
+        );
+      } catch (_) {}
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
