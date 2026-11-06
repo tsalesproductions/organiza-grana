@@ -37,6 +37,8 @@ import ShoppingListsPage from '../Shopping/ShoppingListsPage.jsx';
 import FinancialHealthCard from '../../components/reports/FinancialHealthCard.jsx';
 import VoiceTransactionModal from '../../components/ai/VoiceTransactionModal.jsx';
 import SavingsGoalsModal from '../../components/goals/SavingsGoalsModal.jsx';
+import UpdateBanner from '../../components/ui/UpdateBanner.jsx';
+import { checkForAppUpdate, dismissUpdate } from '../../services/updateService.js';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -54,8 +56,18 @@ const DashboardPage = () => {
   const [showShoppingLists, setShowShoppingLists] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [showGoalsModal, setShowGoalsModal] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
 
   const { month, year } = getCurrentMonthYear();
+
+  // Verifica se há novas versões disponíveis no GitHub Releases de forma silenciosa
+  useEffect(() => {
+    checkForAppUpdate().then((info) => {
+      if (info?.hasUpdate) {
+        setUpdateInfo(info);
+      }
+    });
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -139,6 +151,17 @@ const DashboardPage = () => {
       </div>
 
       <div className="og-scrollable og-page-content">
+
+        {/* Notificação Discreta de Atualização via GitHub Releases */}
+        {updateInfo && (
+          <UpdateBanner
+            update={updateInfo}
+            onDismiss={() => {
+              dismissUpdate(updateInfo.latestVersion);
+              setUpdateInfo(null);
+            }}
+          />
+        )}
 
         {/* Saldo Total - Hero Card com Alerta Máximo para Negativo */}
         {(() => {

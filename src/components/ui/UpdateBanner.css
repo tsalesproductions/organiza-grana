@@ -1,0 +1,93 @@
+/* Update Banner */
+.og-update-banner {
+  background: var(--color-surface, #ffffff);
+  border: 1.5px solid var(--color-primary-light, #a29bfe);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 18px rgba(108, 92, 231, 0.16);
+  margin-bottom: var(--space-3);
+  transition: all 0.2s ease;
+}
+
+.og-update-banner__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--color-primary-ultra, #ede9ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.og-update-banner__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.og-update-banner__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text, #111827);
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.og-update-banner__sub {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.og-update-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.og-update-banner__btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary, #6c5ce7);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.og-update-banner__btn-download:active {
+  transform: scale(0.96);
+  background: var(--color-primary-dark, #5849c2);
+}
+
+.og-update-banner__btn-close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted, #9ca3af);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.og-update-banner__btn-close:active {
+  color: var(--color-text, #111827);
+  background: var(--color-border-light);
+}

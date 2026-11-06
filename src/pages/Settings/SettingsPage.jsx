@@ -12,6 +12,7 @@ import { exportDatabaseBackup, importDatabaseBackup } from '../../services/backu
 import { getTransactionsByMonth, getMonthSummary } from '../../services/transactions.js';
 import { getCurrentMonthYear, formatMonthYear } from '../../utils/dates.js';
 import PDFReportModal from '../../components/reports/PDFReportModal.jsx';
+import { CURRENT_APP_VERSION, checkForAppUpdate, openExternalUrl } from '../../services/updateService.js';
 import './SettingsPage.css';
 
 const SettingsPage = () => {
@@ -487,12 +488,50 @@ const SettingsPage = () => {
           <div className="og-card">
             <div className="og-settings-item" style={{ cursor: 'default' }}>
               <div className="og-settings-item__left">
-                <div className="og-settings-item__icon">💰</div>
+                <div className="og-settings-item__icon">📱</div>
                 <div>
                   <p className="og-settings-item__title">OrganizaGrana</p>
-                  <p className="og-settings-item__subtitle">Versão 1.0.0</p>
+                  <p className="og-settings-item__subtitle">Versão {CURRENT_APP_VERSION}</p>
                 </div>
               </div>
+            </div>
+
+            <div
+              className="og-settings-item"
+              onClick={async () => {
+                showToast('Buscando atualizações no GitHub...', 'info');
+                const update = await checkForAppUpdate(true);
+                if (update?.hasUpdate) {
+                  if (window.confirm(`Nova versão v${update.latestVersion} encontrada! Deseja abrir a página de download no GitHub?`)) {
+                    openExternalUrl(update.downloadUrl || update.releaseUrl);
+                  }
+                } else {
+                  showToast(`Você já está na versão mais recente (v${CURRENT_APP_VERSION})!`, 'success');
+                }
+              }}
+            >
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">🔄</div>
+                <div>
+                  <p className="og-settings-item__title">Verificar Atualizações</p>
+                  <p className="og-settings-item__subtitle">Checar se há nova versão no GitHub Releases</p>
+                </div>
+              </div>
+              <span className="og-settings-item__arrow">›</span>
+            </div>
+
+            <div
+              className="og-settings-item"
+              onClick={() => openExternalUrl('https://github.com/tsalesproductions/organiza-grana')}
+            >
+              <div className="og-settings-item__left">
+                <div className="og-settings-item__icon">🌐</div>
+                <div>
+                  <p className="og-settings-item__title">Repositório no GitHub</p>
+                  <p className="og-settings-item__subtitle">tsalesproductions/organiza-grana</p>
+                </div>
+              </div>
+              <span className="og-settings-item__arrow">›</span>
             </div>
           </div>
         </div>

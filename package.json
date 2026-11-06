@@ -21,6 +21,10 @@
   ],
   "author": "Salescode",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsalesproductions/organiza-grana.git"
+  },
   "dependencies": {
     "cordova-android": "^15.1.0",
     "framework7": "^8.3.3",
