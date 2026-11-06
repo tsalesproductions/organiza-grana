@@ -4,6 +4,7 @@
  */
 import { executeSql, executeTransaction } from './db.js';
 import { downloadOrShareFile } from './exportService.js';
+import { getAppVersion } from './updateService.js';
 
 const rowsToArray = (rows) => {
   const arr = [];
@@ -28,9 +29,11 @@ export const exportDatabaseBackup = async () => {
       executeSql('SELECT * FROM savings_goals', []).then((r) => rowsToArray(r.rows)).catch(() => []),
     ]);
 
+  const currentVersion = await getAppVersion();
+
   const backupData = {
     app: 'OrganizaGrana',
-    version: '1.2.0',
+    version: currentVersion,
     exported_at: new Date().toISOString(),
     data: {
       user_config: user,
