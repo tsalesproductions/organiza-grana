@@ -16,7 +16,7 @@ import { getAppVersion, checkForAppUpdate, openExternalUrl } from '../../service
 import './SettingsPage.css';
 
 const SettingsPage = () => {
-  const { showToast } = useApp();
+  const { showToast, triggerRefresh } = useApp();
   const [activeSection, setActiveSection] = useState(null); // null | 'categories' | 'notifications' | 'user'
   const [appVersion, setAppVersion] = useState('');
 
@@ -137,6 +137,7 @@ const SettingsPage = () => {
           loadUser();
           loadCategories();
           loadNotifConfig();
+          if (triggerRefresh) triggerRefresh();
         } catch (err) {
           showToast(err.message || 'Erro ao restaurar backup.', 'error');
         }
