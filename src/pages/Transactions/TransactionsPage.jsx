@@ -1,28 +1,42 @@
 /**
  * OrganizaGrana — Página de Extrato (Transações)
- * Lista todas as transações agrupadas por data com filtros e busca.
+ * Lista todas as transações agrupadas por data com filtros, busca, ordenação configurável
+ * e ações modernas por Long-Press (clique e segura estilo banco digital).
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  CreditCard,
+  Bot,
+  Plus,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Clock,
+  CheckCircle2,
+  RotateCw,
+} from 'lucide-react';
 import { useApp } from '../../store/AppContext.jsx';
 import { getTransactionsByMonth, deleteTransaction, updateTransaction } from '../../services/transactions.js';
 import { formatCurrency } from '../../utils/currency.js';
 import { formatMonthYear, navigateMonth, groupByDate, getDateLabel } from '../../utils/dates.js';
 import TransactionForm from '../../components/forms/TransactionForm.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
+import TransactionActionSheet from '../../components/ui/TransactionActionSheet.jsx';
 import AIImportSheet from '../../components/ai/AIImportSheet.jsx';
 import './TransactionsPage.css';
 
 const TransactionsPage = () => {
-  const { selectedPeriod, setSelectedPeriod, showToast, refreshTrigger } = useApp();
+  const { selectedPeriod, setSelectedPeriod, showToast, refreshTrigger, hideValues } = useApp();
   const { month, year } = selectedPeriod;
 
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [filter, setFilter]             = useState('all'); // 'all' | 'income' | 'expense'
-  const [search, setSearch]             = useState('');
-  const [editData, setEditData]         = useState(null);
-  const [showForm, setShowForm]         = useState(false);
-  const [showAiSheet, setShowAiSheet]   = useState(false);
+  const [transactions, setTransactions]     = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [filter, setFilter]                 = useState('all'); // 'all' | 'income' | 'expense'
+  const [sortOrder, setSortOrder]           = useState('desc'); // 'desc' (mais recentes) | 'asc' (mais antigos)
+  const [search, setSearch]                 = useState('');
+  const [editData, setEditData]             = useState(null);
+  const [showForm, setShowForm]             = useState(false);
+  const [showAiSheet, setShowAiSheet]       = useState(false);
+  const [actionTx, setActionTx]             = useState(null); // Transação aberta no Action Sheet
 
   // Estado do modal de confirmação de deleção
   const [confirmState, setConfirmState] = useState({
@@ -30,6 +44,10 @@ const TransactionsPage = () => {
     transaction: null,
     step: 'initial', // 'initial' | 'single'
   });
+
+  // Referências para controle de Long-Press
+  const longPressTimerRef = useRef(null);
+  const isLongPressActiveRef = useRef(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -45,16 +63,45 @@ const TransactionsPage = () => {
 
   useEffect(() => { loadData(); }, [loadData, refreshTrigger]);
 
-  // ---- Handlers de deleção ----
+  // ---- Long Press Handlers ----
+  const startLongPress = (t) => {
+    isLongPressActiveRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressActiveRef.current = true;
+      if (window.navigator?.vibrate) {
+        window.navigator.vibrate(35);
+      }
+      setActionTx(t);
+    }, 450);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleCardClick = (t) => {
+    // Se o long press foi acionado, ignora o clique de editar imediato
+    if (isLongPressActiveRef.current) {
+      isLongPressActiveRef.current = false;
+      return;
+    }
+    handleEdit(t);
+  };
+
+  // ---- Handlers de Ações ----
   const handleDelete = (t) => {
     setConfirmState({ open: true, transaction: t, step: 'initial' });
   };
 
-  const handleMarkAsPaid = async (t) => {
+  const handleToggleStatus = async (t) => {
     try {
-      await updateTransaction(t.id, { ...t, status: 'paid' }, 'single');
+      const nextStatus = t.status === 'paid' ? 'pending' : 'paid';
+      await updateTransaction(t.id, { ...t, status: nextStatus }, 'single');
       await loadData();
-      showToast('Lançamento marcado como pago!', 'success');
+      showToast(nextStatus === 'paid' ? 'Lançamento marcado como pago!' : 'Lançamento marcado como a pagar!', 'success');
     } catch (err) {
       showToast('Erro ao atualizar status.', 'error');
     }
@@ -100,7 +147,6 @@ const TransactionsPage = () => {
     const isRecurring = !!t.installment_group_id;
 
     if (!isRecurring) {
-      // Lançamento único
       return {
         icon: '🗑️',
         title: 'Excluir lançamento?',
@@ -115,7 +161,6 @@ const TransactionsPage = () => {
       };
     }
 
-    // Lançamento recorrente/parcelado
     const typeLabel = t.recurrence_type === 'installment' ? 'parcelado' : 'recorrente';
     return {
       icon: '🔄',
@@ -149,7 +194,9 @@ const TransactionsPage = () => {
   });
 
   const grouped = groupByDate(filtered);
-  const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+  const sortedDates = Object.keys(grouped).sort((a, b) =>
+    sortOrder === 'desc' ? b.localeCompare(a) : a.localeCompare(b)
+  );
 
   const confirmProps = buildConfirmProps();
 
@@ -161,6 +208,7 @@ const TransactionsPage = () => {
         <button
           className="transactions-header__nav"
           onClick={() => setSelectedPeriod(navigateMonth(month, year, -1))}
+          aria-label="Mês anterior"
         >‹</button>
         <h1 className="transactions-header__title" style={{ textTransform: 'capitalize' }}>
           {formatMonthYear(month, year)}
@@ -168,12 +216,12 @@ const TransactionsPage = () => {
         <button
           className="transactions-header__nav"
           onClick={() => setSelectedPeriod(navigateMonth(month, year, +1))}
+          aria-label="Próximo mês"
         >›</button>
       </div>
 
-      {/* Filtros */}
+      {/* Barra de Filtros e Busca */}
       <div className="transactions-filters">
-        {/* Busca */}
         <input
           className="og-input transactions-filters__search"
           type="text"
@@ -182,36 +230,60 @@ const TransactionsPage = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {/* Chips de filtro */}
-        <div className="transactions-filters__chips">
-          {[
-            { value: 'all',     label: 'Todos' },
-            { value: 'income',  label: '↑ Receitas' },
-            { value: 'expense', label: '↓ Despesas' },
-          ].map(({ value, label }) => (
-            <button
-              key={value}
-              className={`transactions-filters__chip ${filter === value ? `transactions-filters__chip--active transactions-filters__chip--${value}` : ''}`}
-              onClick={() => setFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="transactions-filters__row">
+          {/* Chips de filtro de tipo */}
+          <div className="transactions-filters__chips">
+            {[
+              { value: 'all',     label: 'Todos' },
+              { value: 'income',  label: '↑ Receitas' },
+              { value: 'expense', label: '↓ Despesas' },
+            ].map(({ value, label }) => (
+              <button
+                key={value}
+                className={`transactions-filters__chip ${filter === value ? `transactions-filters__chip--active transactions-filters__chip--${value}` : ''}`}
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Botão de Ordenação (Mais recentes vs Mais antigos) */}
+          <button
+            className="transactions-sort-btn"
+            onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+            title={sortOrder === 'desc' ? 'Ordenação: Mais recentes primeiro' : 'Ordenação: Mais antigos primeiro'}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              {sortOrder === 'desc' ? (
+                <>
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <polyline points="19 12 12 19 5 12" />
+                </>
+              ) : (
+                <>
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </>
+              )}
+            </svg>
+            <span>{sortOrder === 'desc' ? 'Recentes' : 'Antigos'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Lista */}
+      {/* Lista de Transações */}
       <div className="og-scrollable og-page-content">
         {loading ? (
           [1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton" style={{ height: 64, borderRadius: 12 }} />
+            <div key={i} className="skeleton" style={{ height: 64, borderRadius: 12, marginBottom: 8 }} />
           ))
         ) : sortedDates.length === 0 ? (
           <div className="og-empty-state">
             <div className="og-empty-state__emoji">📭</div>
             <p className="og-empty-state__title">Nenhum lançamento</p>
             <p className="og-empty-state__subtitle">
-              {search ? 'Tente outra busca.' : 'Adicione seu primeiro lançamento no Dashboard.'}
+              {search ? 'Tente outra busca.' : 'Adicione seu primeiro lançamento com o botão +.'}
             </p>
           </div>
         ) : (
@@ -222,29 +294,40 @@ const TransactionsPage = () => {
                 {grouped[date].map((t) => (
                   <div
                     key={t.id}
-                    className="og-transaction-item"
-                    onClick={() => handleEdit(t)}
+                    className="og-transaction-item og-transaction-item--clean"
+                    onClick={() => handleCardClick(t)}
+                    onTouchStart={() => startLongPress(t)}
+                    onTouchEnd={cancelLongPress}
+                    onTouchMove={cancelLongPress}
+                    onMouseDown={() => startLongPress(t)}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
                   >
+                    {/* Ícone da Categoria */}
                     <div
                       className="og-transaction-item__icon"
                       style={{ background: t.category_color ? `${t.category_color}22` : 'var(--color-primary-ultra)' }}
                     >
                       {t.category_icon || (t.type === 'income' ? '💰' : '💸')}
                     </div>
+
+                    {/* Informações centrais */}
                     <div className="og-transaction-item__info">
                       <p className="og-transaction-item__desc">{t.description}</p>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
+                      <div className="og-transaction-item__tags">
                         <span className={`og-badge ${t.type === 'income' ? 'og-badge--income' : 'og-badge--expense'}`}>
+                          {t.type === 'income' ? <ArrowUpRight size={11} /> : <ArrowDownLeft size={11} />}
                           {t.type === 'income' ? 'Receita' : 'Despesa'}
                         </span>
                         {t.payment_method === 'credit_card' && (
                           <span className="og-badge og-badge--primary">
-                            💳 {t.card_name ? `${t.card_name}${t.card_last_digits ? ` (•••• ${t.card_last_digits})` : ''}` : 'Cartão'}
+                            <CreditCard size={11} />
+                            {t.card_name ? `${t.card_name}${t.card_last_digits ? ` (${t.card_last_digits})` : ''}` : 'Cartão'}
                           </span>
                         )}
                         {t.recurrence_type === 'monthly_indefinite' && (
                           <span className="og-badge" style={{ background: 'var(--color-primary-ultra)', color: 'var(--color-primary)' }}>
-                            🔄 Recorrente
+                            <RotateCw size={11} /> Recorrente
                           </span>
                         )}
                         {t.recurrence_type === 'installment' && t.installment_total && (
@@ -252,55 +335,38 @@ const TransactionsPage = () => {
                             {t.installment_current}/{t.installment_total}x
                           </span>
                         )}
-                        {t.recurrence_type === 'monthly' && t.installment_total && (
-                          <span className="og-badge" style={{ background: 'var(--color-warning-light)', color: '#B8810A' }}>
-                            {t.installment_current}/{t.installment_total}m
-                          </span>
-                        )}
                         {t.status === 'pending' && (
-                          <span className="og-badge" style={{ background: '#fff9c4', color: '#B8810A' }}>
-                            ⏳ A Pagar
+                          <span className="og-badge og-badge--pending">
+                            <Clock size={11} /> A Pagar
                           </span>
                         )}
                         {t.status === 'paid' && t.payment_code && (
-                          <span className="og-badge" style={{ background: '#e0f7fa', color: '#00B894' }}>
-                            ✅ Pago
+                          <span className="og-badge og-badge--paid">
+                            <CheckCircle2 size={11} /> Pago
                           </span>
                         )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+
+                    {/* Valor e Ação rápida */}
+                    <div className="og-transaction-item__right">
                       <span className={`og-transaction-item__amount ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount, false, hideValues)}
                       </span>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        {t.status === 'pending' && (
-                          <button
-                            className="transactions-delete-btn"
-                            style={{ background: '#00B894', color: '#fff' }}
-                            onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(t); }}
-                            title="Marcar como Pago"
-                          >
-                            ✅
-                          </button>
-                        )}
-                        {t.payment_code && (
-                          <button
-                            className="transactions-delete-btn"
-                            style={{ background: 'var(--color-primary)', color: '#fff' }}
-                            onClick={(e) => { e.stopPropagation(); handleCopyCode(t.payment_code); }}
-                            title="Copiar Código"
-                          >
-                            📄
-                          </button>
-                        )}
-                        <button
-                          className="transactions-delete-btn"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
-                        >
-                          🗑
-                        </button>
-                      </div>
+                      <button
+                        className="og-transaction-item__more-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionTx(t);
+                        }}
+                        aria-label="Mais opções"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <circle cx="12" cy="5" r="2" />
+                          <circle cx="12" cy="12" r="2" />
+                          <circle cx="12" cy="19" r="2" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -313,14 +379,22 @@ const TransactionsPage = () => {
       {/* FABs */}
       <div className="transactions-fab-group">
         <button
-          className="og-fab og-fab--secondary"
+          className="og-fab og-fab--secondary transactions-fab-ai"
           onClick={() => setShowAiSheet(true)}
           title="Importar com IA"
-        >🤖</button>
-        <button className="og-fab" onClick={() => { setEditData(null); setShowForm(true); }}>+</button>
+        >
+          <Bot size={22} color="#ffffff" />
+        </button>
+        <button
+          className="og-fab"
+          onClick={() => { setEditData(null); setShowForm(true); }}
+          title="Novo Lançamento"
+        >
+          <Plus size={24} color="#ffffff" />
+        </button>
       </div>
 
-      {/* Form */}
+      {/* Form de Edição / Criação */}
       {showForm && (
         <TransactionForm
           initialType="expense"
@@ -337,6 +411,17 @@ const TransactionsPage = () => {
           onSave={async () => { await loadData(); showToast('Lançamentos importados!', 'success'); }}
         />
       )}
+
+      {/* Action Sheet Moderno (Estilo Banco) - Acionado por Long Press ou pelos 3 pontinhos */}
+      <TransactionActionSheet
+        open={!!actionTx}
+        transaction={actionTx}
+        onClose={() => setActionTx(null)}
+        onEdit={(t) => handleEdit(t)}
+        onToggleStatus={handleToggleStatus}
+        onCopyCode={handleCopyCode}
+        onDelete={handleDelete}
+      />
 
       {/* Modal de confirmação de deleção */}
       <ConfirmDialog

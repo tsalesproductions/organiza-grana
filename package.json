@@ -1,7 +1,7 @@
 {
   "name": "com.salescode.organizagrana",
   "displayName": "OrganizaGrana",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Gestao Financeira Pessoal - 100% offline",
   "main": "index.js",
   "scripts": {
@@ -25,6 +25,7 @@
     "cordova-android": "^15.1.0",
     "framework7": "^8.3.3",
     "framework7-react": "^8.3.3",
+    "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",

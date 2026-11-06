@@ -1,0 +1,233 @@
+/* =============================================================
+   OrganizaGrana — TransactionActionSheet (Estilo Banco Digital)
+   ============================================================= */
+
+.og-action-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  animation: ogFadeIn 0.2s ease-out;
+}
+
+.og-action-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 540px;
+  margin: 0 auto;
+  background: var(--color-surface, #ffffff);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 16px));
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border-light, rgba(0, 0, 0, 0.06));
+}
+
+.og-action-sheet__handle-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px 0 14px;
+  cursor: pointer;
+}
+
+.og-action-sheet__handle {
+  width: 38px;
+  height: 4.5px;
+  border-radius: 4px;
+  background: var(--color-border, #d1d5db);
+}
+
+/* Resumo da transação no topo do sheet */
+.og-action-sheet__summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 4px 14px;
+}
+
+.og-action-sheet__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.og-action-sheet__details {
+  flex: 1;
+  min-width: 0;
+}
+
+.og-action-sheet__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text, #111827);
+  margin: 0 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.og-action-sheet__sub {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.og-action-sheet__dot {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.og-action-sheet__value-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.og-action-sheet__amount {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.og-action-sheet__status-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.og-action-sheet__status-badge.status-paid {
+  background: rgba(0, 184, 148, 0.12);
+  color: #009975;
+}
+
+.og-action-sheet__status-badge.status-pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.og-action-sheet__divider {
+  height: 1px;
+  background: var(--color-border-light, #f3f4f6);
+  margin: 2px 0 10px;
+}
+
+/* Itens de Ação */
+.og-action-sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.og-action-sheet__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--color-surface-alt, #f9fafb);
+  border: 1px solid transparent;
+  color: var(--color-text, #1f2937);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.og-action-sheet__item:active {
+  background: var(--color-border-light, #f3f4f6);
+  transform: scale(0.99);
+}
+
+.og-action-sheet__item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-surface, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary, #4b5563);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.og-action-sheet__item-icon.icon--accent {
+  color: var(--color-primary, #6366f1);
+  background: var(--color-primary-ultra, rgba(99, 102, 241, 0.1));
+}
+
+.og-action-sheet__item-icon.icon--danger {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.og-action-sheet__item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.og-action-sheet__item-label {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-text, #111827);
+}
+
+.og-action-sheet__item-hint {
+  font-size: 11.5px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.og-action-sheet__item--danger .og-action-sheet__item-label {
+  color: #ef4444;
+}
+
+/* Footer / Cancelar */
+.og-action-sheet__footer {
+  margin-top: 14px;
+}
+
+.og-action-sheet__cancel-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: transparent;
+  color: var(--color-text-secondary, #4b5563);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.og-action-sheet__cancel-btn:active {
+  background: var(--color-surface-alt, #f9fafb);
+}
+
+@keyframes ogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+

@@ -11,7 +11,6 @@
   background: var(--color-surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-xl);
-  /* Altura máxima para não cobrir tela toda */
   max-height: 92vh;
   display: flex;
   flex-direction: column;
@@ -139,35 +138,33 @@
   text-align: center;
 }
 
-/* ─── Textarea de observações ─────────────────────────────── */
+/* Textarea de observações */
 .ai-textarea {
-  height: auto !important;
+  min-height: 80px;
   resize: none;
-  line-height: 1.5;
-  font-size: var(--font-size-sm) !important;
+  line-height: 1.4;
+  padding: var(--space-3);
 }
 
-/* ─── Erro ────────────────────────────────────────────────── */
+/* Mensagem de erro */
 .ai-error {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
-  background: var(--color-expense-light, #FFECEC);
-  border: 1px solid var(--color-expense, #E53E3E);
+  background: var(--color-expense-light);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  color: var(--color-expense, #C53030);
-  line-height: 1.4;
+  color: var(--color-expense);
 }
 
-/* ─── Loading ─────────────────────────────────────────────── */
+/* ─── Loading com animação suave ──────────────────────────── */
 .ai-loading {
   align-items: center;
   justify-content: center;
   min-height: 240px;
   text-align: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .ai-loading__animation {
@@ -183,18 +180,18 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 3px solid var(--color-primary-ultra);
+  border: 3px solid var(--color-border);
   border-top-color: var(--color-primary);
   animation: aiSpin 0.9s linear infinite;
 }
 
 .ai-loading__icon {
-  font-size: 30px;
+  font-size: 32px;
   animation: aiPulse 1.4s ease-in-out infinite;
 }
 
 .ai-loading__title {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-bold);
   color: var(--color-text);
   margin: 0;
@@ -225,15 +222,15 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4);
   background: var(--color-surface-alt);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: 1.5px solid var(--color-border-light);
   transition: opacity var(--transition-fast);
 }
 
 .ai-review-item--excluded {
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 /* Checkbox custom */
@@ -242,7 +239,7 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding-top: 2px;
+  padding-top: 4px;
   cursor: pointer;
 }
 .ai-review-item__check input[type="checkbox"] {
@@ -279,7 +276,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -288,8 +285,8 @@
   background: none;
   border: none;
   border-bottom: 1.5px solid var(--color-border-light);
-  padding: 2px 0;
-  font-size: var(--font-size-sm);
+  padding: 4px 0;
+  font-size: var(--font-size-base);
   font-weight: var(--font-semibold);
   color: var(--color-text);
   font-family: var(--font-family);
@@ -304,76 +301,208 @@
   cursor: not-allowed;
 }
 
-.ai-review-item__meta {
+/* Linha de Valor e Badge clicável */
+.ai-review-item__row-val {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.ai-review-item__cat-select {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  padding: 2px 8px;
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family);
-  color: var(--color-text-secondary);
-  outline: none;
-  max-width: 150px;
-}
-.ai-review-item__cat-select:focus {
-  border-color: var(--color-primary);
-}
-
-
-.ai-review-item__date {
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--color-border-light);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  font-family: var(--font-family);
-  padding: 2px 0;
-  outline: none;
-  width: 130px;
-}
-
-/* Valor */
-.ai-review-item__amount-wrap {
+.ai-review-item__amount-input-wrap {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
 }
 
 .ai-review-item__currency {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--color-text-muted);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
 }
 
-.ai-review-item__amount {
-  width: 80px;
+.ai-review-item__amount-field {
+  width: 110px;
   background: none;
   border: none;
   border-bottom: 1.5px solid var(--color-border-light);
-  text-align: right;
-  font-size: var(--font-size-base);
+  font-size: 16px;
   font-weight: var(--font-bold);
   color: var(--color-primary);
   font-family: var(--font-family);
   padding: 2px 0;
   outline: none;
   transition: border-color var(--transition-fast);
-  /* Remove as setas do input number */
-  -moz-appearance: textfield;
 }
-.ai-review-item__amount::-webkit-outer-spin-button,
-.ai-review-item__amount::-webkit-inner-spin-button { -webkit-appearance: none; }
-.ai-review-item__amount:focus { border-bottom-color: var(--color-primary); }
-.ai-review-item__amount:disabled { color: var(--color-text-muted); cursor: not-allowed; }
+.ai-review-item__amount-field:focus {
+  border-bottom-color: var(--color-primary);
+}
+
+.clickable-type-badge {
+  cursor: pointer;
+  border: none;
+}
+
+/* Grupos de campos na revisão */
+.ai-review-field-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.ai-review-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.ai-review-item__cat-select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family);
+  color: var(--color-text-secondary);
+  outline: none;
+  max-width: 170px;
+}
+.ai-review-item__cat-select:focus {
+  border-color: var(--color-primary);
+}
+
+/* Toggle Pagamento (Dinheiro vs Cartão) */
+.ai-review-method-toggle {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.ai-method-btn {
+  border: none;
+  background: transparent;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ai-method-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.ai-review-item__card-select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--font-family);
+  color: var(--color-text);
+  outline: none;
+  max-width: 160px;
+}
+
+.ai-review-item__date {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family);
+  padding: 3px 6px;
+  outline: none;
+  width: 125px;
+}
+
+.ai-status-pill {
+  border: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-status-pill.status--paid {
+  background: rgba(0, 184, 148, 0.14);
+  color: #009975;
+}
+
+.ai-status-pill.status--pending {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+
+/* Linha digitável ou Pix */
+.ai-review-code-box {
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-review-code-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.ai-review-code-input {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--color-primary);
+  outline: none;
+  width: 100%;
+}
+
+/* Card Coach Financeiro IA */
+.ai-coach-insight-card {
+  margin-top: 4px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border-left: 3.5px solid var(--color-primary);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ai-coach-insight-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-coach-insight-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.12);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.ai-coach-insight-text {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-text);
+  margin: 0;
+}
 
 /* Botões da revisão */
 .ai-review-actions {

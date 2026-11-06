@@ -29,6 +29,25 @@ export const AppProvider = ({ children }) => {
     editData: null,     // preenchido quando editando
   });
 
+  // Modo Privacidade (ocultar valores em locais públicos)
+  const [hideValues, setHideValues] = useState(() => {
+    try {
+      return localStorage.getItem('og_hide_values') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
+
+  const toggleHideValues = useCallback(() => {
+    setHideValues((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('og_hide_values', String(next));
+      } catch (_) {}
+      return next;
+    });
+  }, []);
+
   // Flag para forçar refetch de dados nas telas
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -67,6 +86,8 @@ export const AppProvider = ({ children }) => {
     closeTransactionSheet,
     refreshTrigger,
     triggerRefresh,
+    hideValues,
+    toggleHideValues,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

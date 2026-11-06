@@ -9,17 +9,17 @@ import { getUserConfig } from '../../services/user.js';
 import './AIChatSheet.css';
 
 const QUICK_PROMPTS = [
-  '📊 Como estão meus gastos este mês?',
-  '💡 Onde posso economizar dinheiro?',
-  '📈 Compare meus gastos com o mês passado',
-  '💳 Qual a situação das minhas faturas?',
+  '🚨 Meu orçamento está apertado este mês?',
+  '🛑 Alguma categoria passou do limite?',
+  '🛒 Quero comprar algo, faz sentido agora?',
+  '💡 Onde posso cortar gastos essa semana?',
 ];
 
 const CHAT_STORAGE_KEY = 'organizagrana_ai_chat_history';
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
-  content: 'Olá! Sou o seu Consultor Financeiro IA. Como posso te ajudar a analisar suas finanças ou economizar hoje?',
+  content: 'Olá! Sou o seu Coach Financeiro IA. Estou monitorando seus tetos e o orçamento do mês para te ajudar a não se apertar. Como posso te orientar hoje?',
 };
 
 const loadSavedMessages = () => {

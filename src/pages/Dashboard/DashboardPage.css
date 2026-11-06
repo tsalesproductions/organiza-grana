@@ -22,20 +22,39 @@
   text-transform: capitalize;
 }
 
-.dashboard-ai-chat-btn {
-  position: relative;
-  width: 44px;
-  height: 44px;
+/* Botão de Modo Privacidade no Header */
+.dashboard-header-icon-btn {
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, #6C5CE7 0%, #00CEC9 100%);
-  border: none;
-  color: #fff;
-  font-size: 20px;
+  background: var(--color-surface-alt);
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-md);
+  transition: all var(--transition-fast);
+}
+.dashboard-header-icon-btn:active {
+  transform: scale(0.92);
+  background: var(--color-border-light);
+  color: var(--color-text);
+}
+
+.dashboard-ai-chat-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #6C5CE7 0%, #00CEC9 100%);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
   transition: all var(--transition-spring);
   -webkit-appearance: none;
 }
@@ -54,7 +73,6 @@
   border-radius: var(--radius-full);
   border: 1.5px solid var(--color-surface);
 }
-
 
 /* Scroll horizontal para os cartões */
 .dashboard-cards-scroll {

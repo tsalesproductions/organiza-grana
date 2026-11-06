@@ -1,13 +1,15 @@
 /**
  * OrganizaGrana — AIImportSheet
  * Bottom-sheet para importação de transações via análise de imagens com GPT Vision.
- * Suporta receitas e despesas.
- *
- * Fluxo: Seleção de imagens → Observações → Análise GPT → Revisão → Salvar
+ * Suporta receitas, despesas, detecção inteligente de vencimentos, cartões de crédito,
+ * códigos de barras/pix e análise crítica de orçamento (Coach IA).
  */
 import React, { useState, useRef, useCallback } from 'react';
 import { analyzeImagesWithGPT } from '../../services/gpt.js';
 import { getAllCategories } from '../../services/categories.js';
+import { getAllCards } from '../../services/cards.js';
+import { getFinancialContextSummary } from '../../services/financialContext.js';
+import { getCategoryBudgets } from '../../services/budgets.js';
 import { createTransaction } from '../../services/transactions.js';
 import { parseCurrencyInput, formatCurrencyInput } from '../../utils/currency.js';
 import './AIImportSheet.css';
@@ -17,6 +19,7 @@ const matchCategory = (hint, categories) => {
   if (!hint || !categories.length) return null;
   const h = hint.toLowerCase();
   return (
+    categories.find((c) => c.name.toLowerCase() === h) ||
     categories.find((c) => c.name.toLowerCase().includes(h)) ||
     categories.find((c) => h.includes(c.name.toLowerCase())) ||
     null
@@ -66,9 +69,10 @@ const AIImportSheet = ({ onClose, onSave }) => {
   const [transactionType, setType] = useState('expense'); // 'expense' | 'income' | 'auto'
   const [observations, setObservations] = useState('');
 
-  // --- Dados da etapa REVIEW ---
+  // --- Dados de Contexto & Revisão ---
   const [reviewItems, setReviewItems] = useState([]); // items editáveis
   const [categories, setCategories] = useState([]);
+  const [cards, setCards] = useState([]);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -154,29 +158,70 @@ const AIImportSheet = ({ onClose, onSave }) => {
     setErrorMsg('');
 
     try {
-      const cats = await getAllCategories();
+      const [cats, userCards, finCtx, budgets] = await Promise.all([
+        getAllCategories(),
+        getAllCards(),
+        getFinancialContextSummary().catch(() => null),
+        getCategoryBudgets().catch(() => []),
+      ]);
+
       setCategories(cats);
+      setCards(userCards);
+
+      // Prepara resumo de tetos orçamentários para alimentar a inteligência do Coach
+      let budgetsSummary = '';
+      if (budgets && budgets.length > 0) {
+        budgetsSummary = budgets
+          .filter((b) => b.budget_limit > 0)
+          .map((b) => `${b.name}: limite R$ ${b.budget_limit.toFixed(2)} (gasto R$ ${b.current_spent.toFixed(2)} - ${b.percentage}%)`)
+          .join(', ');
+      }
+
+      const enhancedContext = finCtx
+        ? {
+            ...finCtx,
+            budgetsSummary,
+          }
+        : null;
 
       const items = await analyzeImagesWithGPT(
         images.map((i) => i.file),
         transactionType,
         observations,
-        cats
+        cats,
+        userCards,
+        enhancedContext
       );
 
-      // Enriquece cada item com category_id sugerido e campos editáveis
+      // Enriquece cada item com mapeamento preciso
       const enriched = items.map((item, idx) => {
-        const matchingCat = matchCategory(item.category_hint, cats.filter((c) => c.type === item.type));
+        let catId = item.category_id;
+        if (!catId) {
+          const matched = matchCategory(item.category_hint, cats.filter((c) => c.type === item.type));
+          catId = matched?.id || null;
+        }
+
+        // Verifica cartão correspondente
+        let cardId = item.card_id;
+        if (!cardId && item.payment_method === 'credit_card' && userCards.length > 0) {
+          cardId = userCards[0].id;
+        }
+
         return {
           _key: `item-${idx}`,
           description: item.description,
           amount: item.amount,
           amountStr: formatCurrencyInput(item.amount),
           type: item.type,
-          category_id: matchingCat?.id || null,
-          category_name: matchingCat?.name || item.category_hint || '',
-          date: item.date || today(),
-          include: true, // o usuário pode desmarcar
+          category_id: catId,
+          date: item.date || item.due_date || today(),
+          due_date: item.due_date || null,
+          status: item.status || 'paid',
+          payment_method: item.payment_method || 'cash',
+          card_id: cardId,
+          payment_code: item.payment_code || '',
+          financial_insight: item.financial_insight || null,
+          include: true,
         };
       });
 
@@ -208,19 +253,23 @@ const AIImportSheet = ({ onClose, onSave }) => {
         const amount = parseCurrencyInput(item.amountStr);
         if (amount <= 0) continue;
 
+        const isCard = item.type === 'expense' && item.payment_method === 'credit_card';
+
         await createTransaction({
-          description: item.description,
+          description: item.description.trim(),
           amount,
           type: item.type,
-          payment_method: 'cash',
-          card_id: null,
+          payment_method: isCard ? 'credit_card' : 'cash',
+          card_id: isCard ? item.card_id : null,
           category_id: item.category_id || null,
           date: item.date || today(),
           is_recurring: 0,
           recurrence_type: null,
           installment_total: null,
           installment_months: null,
-          notes: 'Importado via IA',
+          notes: item.financial_insight ? `[Coach IA] ${item.financial_insight}` : 'Importado via IA',
+          payment_code: item.payment_code?.trim() || null,
+          status: item.type === 'income' ? 'paid' : item.status,
         });
       }
       setStep(STEP_DONE);
@@ -229,6 +278,7 @@ const AIImportSheet = ({ onClose, onSave }) => {
         onClose?.();
       }, 1200);
     } catch (err) {
+      console.error('[AIImportSheet] Erro ao salvar:', err);
       setErrorMsg('Erro ao salvar lançamentos. Tente novamente.');
     } finally {
       setSaving(false);
@@ -242,7 +292,7 @@ const AIImportSheet = ({ onClose, onSave }) => {
       <div className="og-sheet-overlay" onClick={onClose} />
       <div className="ai-sheet animate-slide-up">
 
-        {/* Handle + Título */}
+        {/* Handle bar */}
         <div className="ai-sheet__handle-bar">
           <div className="og-sheet__handle" />
         </div>
@@ -254,7 +304,7 @@ const AIImportSheet = ({ onClose, onSave }) => {
               <span className="ai-sheet__header-icon">🤖</span>
               <div>
                 <h2 className="ai-sheet__title">Importar com IA</h2>
-                <p className="ai-sheet__subtitle">Tire foto do comprovante e deixe a IA extrair os dados</p>
+                <p className="ai-sheet__subtitle">Tire foto do cupom, boleto ou extrato. A IA detecta valores, datas de vencimento e cartões.</p>
               </div>
             </div>
 
@@ -303,7 +353,6 @@ const AIImportSheet = ({ onClose, onSave }) => {
                   </>
                 )}
               </div>
-              {/* Input fallback para Câmera */}
               <input
                 ref={cameraInputRef}
                 type="file"
@@ -316,7 +365,6 @@ const AIImportSheet = ({ onClose, onSave }) => {
                 }}
                 style={{ display: 'none' }}
               />
-              {/* Input fallback para Galeria */}
               <input
                 ref={galleryInputRef}
                 type="file"
@@ -336,14 +384,13 @@ const AIImportSheet = ({ onClose, onSave }) => {
               <label className="og-label">Observações para a IA <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(opcional)</span></label>
               <textarea
                 className="og-input ai-textarea"
-                placeholder={'Ex: "Considere apenas o subtotal"\n"Ignore a taxa de entrega"\n"Divida em 3 parcelas"'}
+                placeholder={'Ex: "Pago no cartão Nubank", "Vence dia 15", "Considere apenas o total"'}
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={3}
               />
             </div>
 
-            {/* Erro */}
             {errorMsg && (
               <div className="ai-error">
                 <span>⚠️</span> {errorMsg}
@@ -368,7 +415,7 @@ const AIImportSheet = ({ onClose, onSave }) => {
               <span className="ai-loading__icon">🤖</span>
             </div>
             <p className="ai-loading__title">Analisando com IA...</p>
-            <p className="ai-loading__subtitle">Extraindo dados financeiros da sua imagem</p>
+            <p className="ai-loading__subtitle">Extraindo valores, datas de vencimento, cartões e analisando orçamento</p>
           </div>
         )}
 
@@ -376,10 +423,10 @@ const AIImportSheet = ({ onClose, onSave }) => {
         {step === STEP_REVIEW && (
           <div className="ai-sheet__content">
             <div className="ai-sheet__header">
-              <span className="ai-sheet__header-icon">✅</span>
+              <span className="ai-sheet__header-icon">📋</span>
               <div>
                 <h2 className="ai-sheet__title">Revisar lançamentos</h2>
-                <p className="ai-sheet__subtitle">{reviewItems.length} item(s) identificado(s). Edite ou desmarque antes de importar.</p>
+                <p className="ai-sheet__subtitle">{reviewItems.length} item(s) identificado(s). Revise cartões, datas e categorias.</p>
               </div>
             </div>
 
@@ -400,21 +447,43 @@ const AIImportSheet = ({ onClose, onSave }) => {
                   </label>
 
                   <div className="ai-review-item__body">
-                    {/* Descrição editável */}
+                    {/* Descrição */}
                     <input
                       className="ai-review-item__desc"
                       value={item.description}
                       onChange={(e) => updateItem(item._key, 'description', e.target.value)}
                       disabled={!item.include}
+                      placeholder="Descrição do lançamento"
                     />
 
-                    <div className="ai-review-item__meta">
-                      {/* Badge tipo */}
-                      <span className={`og-badge ${item.type === 'income' ? 'og-badge--income' : 'og-badge--expense'}`}>
-                        {item.type === 'income' ? '↑ Receita' : '↓ Despesa'}
-                      </span>
+                    {/* Valor e Tipo */}
+                    <div className="ai-review-item__row-val">
+                      <div className="ai-review-item__amount-input-wrap">
+                        <span className="ai-review-item__currency">R$</span>
+                        <input
+                          className="ai-review-item__amount-field"
+                          type="text"
+                          inputMode="numeric"
+                          value={item.amountStr}
+                          onChange={(e) => updateItem(item._key, 'amountStr', formatCurrencyInput(e.target.value))}
+                          disabled={!item.include}
+                        />
+                      </div>
 
-                      {/* Seletor de Categoria */}
+                      <button
+                        type="button"
+                        className={`og-badge ${item.type === 'income' ? 'og-badge--income' : 'og-badge--expense'} clickable-type-badge`}
+                        onClick={() => updateItem(item._key, 'type', item.type === 'income' ? 'expense' : 'income')}
+                        disabled={!item.include}
+                        title="Toque para alternar Receita / Despesa"
+                      >
+                        {item.type === 'income' ? '↑ Receita' : '↓ Despesa'}
+                      </button>
+                    </div>
+
+                    {/* Categoria */}
+                    <div className="ai-review-field-group">
+                      <span className="ai-review-field-label">Categoria:</span>
                       <select
                         className="ai-review-item__cat-select"
                         value={item.category_id || ''}
@@ -432,27 +501,100 @@ const AIImportSheet = ({ onClose, onSave }) => {
                       </select>
                     </div>
 
-                    {/* Data editável */}
-                    <input
-                      className="ai-review-item__date"
-                      type="date"
-                      value={item.date}
-                      onChange={(e) => updateItem(item._key, 'date', e.target.value)}
-                      disabled={!item.include}
-                    />
-                  </div>
+                    {/* Forma de Pagamento e Cartão (apenas para despesas) */}
+                    {item.type === 'expense' && (
+                      <div className="ai-review-field-group">
+                        <span className="ai-review-field-label">Pagamento:</span>
+                        <div className="ai-review-method-toggle">
+                          <button
+                            type="button"
+                            className={`ai-method-btn ${item.payment_method === 'cash' ? 'active' : ''}`}
+                            onClick={() => updateItem(item._key, 'payment_method', 'cash')}
+                            disabled={!item.include}
+                          >
+                            Dinheiro/Pix
+                          </button>
+                          <button
+                            type="button"
+                            className={`ai-method-btn ${item.payment_method === 'credit_card' ? 'active' : ''}`}
+                            onClick={() => {
+                              updateItem(item._key, 'payment_method', 'credit_card');
+                              if (!item.card_id && cards.length > 0) {
+                                updateItem(item._key, 'card_id', cards[0].id);
+                              }
+                            }}
+                            disabled={!item.include}
+                          >
+                            Cartão
+                          </button>
+                        </div>
 
-                  {/* Valor editável com máscara BR */}
-                  <div className="ai-review-item__amount-wrap">
-                    <span className="ai-review-item__currency">R$</span>
-                    <input
-                      className="ai-review-item__amount"
-                      type="text"
-                      inputMode="numeric"
-                      value={item.amountStr}
-                      onChange={(e) => updateItem(item._key, 'amountStr', formatCurrencyInput(e.target.value))}
-                      disabled={!item.include}
-                    />
+                        {item.payment_method === 'credit_card' && cards.length > 0 && (
+                          <select
+                            className="ai-review-item__card-select"
+                            value={item.card_id || cards[0].id}
+                            onChange={(e) => updateItem(item._key, 'card_id', parseInt(e.target.value, 10))}
+                            disabled={!item.include}
+                          >
+                            {cards.map((card) => (
+                              <option key={card.id} value={card.id}>
+                                💳 {card.name} {card.last_digits ? `(•••• ${card.last_digits})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Status & Data / Vencimento */}
+                    <div className="ai-review-field-group">
+                      <span className="ai-review-field-label">
+                        {item.status === 'pending' ? 'Vencimento:' : 'Data:'}
+                      </span>
+                      <input
+                        className="ai-review-item__date"
+                        type="date"
+                        value={item.date}
+                        onChange={(e) => updateItem(item._key, 'date', e.target.value)}
+                        disabled={!item.include}
+                      />
+
+                      {item.type === 'expense' && (
+                        <button
+                          type="button"
+                          className={`ai-status-pill ${item.status === 'pending' ? 'status--pending' : 'status--paid'}`}
+                          onClick={() => updateItem(item._key, 'status', item.status === 'pending' ? 'paid' : 'pending')}
+                          disabled={!item.include}
+                        >
+                          {item.status === 'pending' ? '⏳ A Pagar' : '✅ Pago'}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Código de Pagamento / Boleto / Pix (se identificado) */}
+                    {item.payment_code && (
+                      <div className="ai-review-code-box">
+                        <span className="ai-review-code-label">Código / Pix detectado:</span>
+                        <input
+                          className="ai-review-code-input"
+                          value={item.payment_code}
+                          onChange={(e) => updateItem(item._key, 'payment_code', e.target.value)}
+                          disabled={!item.include}
+                        />
+                      </div>
+                    )}
+
+                    {/* Insight / Questionamento do Coach Financeiro */}
+                    {item.financial_insight && item.include && (
+                      <div className="ai-coach-insight-card">
+                        <div className="ai-coach-insight-header">
+                          <span className="ai-coach-insight-badge">Coach IA</span>
+                        </div>
+                        <p className="ai-coach-insight-text">
+                          {item.financial_insight}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -477,7 +619,7 @@ const AIImportSheet = ({ onClose, onSave }) => {
                 onClick={handleSave}
                 disabled={saving || !includedCount}
               >
-                {saving ? '⏳ Salvando...' : `✅ Importar ${includedCount}`}
+                {saving ? '⏳ Salvando...' : `Importar ${includedCount} lançamento(s)`}
               </button>
             </div>
           </div>
@@ -488,7 +630,7 @@ const AIImportSheet = ({ onClose, onSave }) => {
           <div className="ai-sheet__content ai-done">
             <div className="ai-done__icon">🎉</div>
             <p className="ai-done__title">Lançamentos importados!</p>
-            <p className="ai-done__subtitle">Os dados foram salvos com sucesso.</p>
+            <p className="ai-done__subtitle">Os dados e classificações foram salvos com sucesso.</p>
           </div>
         )}
 

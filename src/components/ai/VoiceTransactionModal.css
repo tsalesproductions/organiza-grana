@@ -1,0 +1,222 @@
+/* Voice Transaction Modal */
+.og-voice-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1100;
+}
+
+.og-voice-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 500px;
+  margin: 0 auto;
+  background: var(--color-surface, #fff);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 16px));
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  z-index: 1101;
+  display: flex;
+  flex-direction: column;
+}
+
+.og-voice-modal__handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--color-border);
+  margin: 0 auto 12px;
+  cursor: pointer;
+}
+
+.og-voice-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.og-voice-modal__icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--color-primary-ultra);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.og-voice-modal__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 2px;
+}
+
+.og-voice-modal__sub {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.og-voice-modal__close-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.og-voice-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 18px;
+  align-items: center;
+}
+
+/* Microfone Animado */
+.og-voice-mic-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.og-voice-mic-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary-ultra);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(108, 92, 231, 0.25);
+}
+
+.og-voice-mic-btn.recording {
+  background: #ef4444;
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.6);
+  transform: scale(1.05);
+}
+
+.og-voice-waves {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+}
+
+.wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  opacity: 0;
+}
+
+.wave.active:nth-child(1) {
+  animation: voicePulse 1.4s ease-out infinite;
+}
+.wave.active:nth-child(2) {
+  animation: voicePulse 1.4s ease-out infinite 0.7s;
+}
+
+@keyframes voicePulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.og-voice-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 0;
+}
+
+.og-voice-transcript-box {
+  width: 100%;
+}
+
+.og-voice-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text);
+  resize: none;
+  outline: none;
+}
+.og-voice-input:focus {
+  border-color: var(--color-primary);
+}
+
+.og-voice-error {
+  font-size: 12px;
+  color: #ef4444;
+  text-align: center;
+  margin: 0;
+}
+
+/* Card Resumo pós-transcrição */
+.og-voice-summary-card {
+  width: 100%;
+  background: var(--color-surface-alt);
+  border: 1.5px solid var(--color-border-light);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.og-voice-summary-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.og-voice-summary-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.og-voice-summary-desc {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.og-voice-summary-tags {
+  display: flex;
+  gap: 6px;
+}
+
+.og-voice-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 10px;
+}
+

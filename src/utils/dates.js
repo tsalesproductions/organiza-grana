@@ -28,6 +28,18 @@ export const formatDateFull = (isoDate) => {
 };
 
 /**
+ * Formata uma data ISO (YYYY-MM-DD) para formato BR (DD/MM/YYYY)
+ */
+export const formatDateBR = (isoDate) => {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return isoDate;
+};
+
+/**
  * Retorna o nome do mês + ano (ex: "Agosto 2026")
  */
 export const formatMonthYear = (month, year) => {

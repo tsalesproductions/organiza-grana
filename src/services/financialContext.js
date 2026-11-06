@@ -1,10 +1,11 @@
 /**
  * OrganizaGrana — Serviço de Agregação de Contexto Financeiro
- * Compila dados anonimizados do SQLite para alimentar o assistente de IA.
+ * Compila dados anonimizados do SQLite para alimentar o assistente de IA com precisão.
  */
 import { executeSql } from './db.js';
 import { getCurrentMonthYear, navigateMonth } from '../utils/dates.js';
 import { getUserConfig } from './user.js';
+import { getCategoryBudgets } from './budgets.js';
 
 const rowsToArray = (rows) => {
   const arr = [];
@@ -32,6 +33,7 @@ export const getFinancialContextSummary = async () => {
     categoriesBreakdown,
     cardsData,
     recurringData,
+    budgetsData,
   ] = await Promise.all([
     getUserConfig(),
 
@@ -64,12 +66,12 @@ export const getFinancialContextSummary = async () => {
        WHERE t.type = 'expense' AND strftime('%Y-%m', t.date) = ?
        GROUP BY t.category_id
        ORDER BY total DESC
-       LIMIT 5`,
+       LIMIT 6`,
       [monthStr]
     ),
 
     // Cartões de crédito e limite
-    executeSql('SELECT name, credit_limit, closing_day, due_day FROM cards', []),
+    executeSql('SELECT name, last_digits, credit_limit, closing_day, due_day FROM cards', []),
 
     // Próximas despesas recorrentes
     executeSql(
@@ -79,6 +81,9 @@ export const getFinancialContextSummary = async () => {
        LIMIT 5`,
       []
     ),
+
+    // Tetos orçamentários por categoria
+    getCategoryBudgets(month, year).catch(() => []),
   ]);
 
   const currInc = currentTotals.rows.item(0)?.totalIncome || 0;
@@ -111,5 +116,6 @@ export const getFinancialContextSummary = async () => {
     categories,
     cards,
     recurring,
+    budgets: budgetsData || [],
   };
 };

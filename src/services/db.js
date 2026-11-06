@@ -205,6 +205,18 @@ export const initDatabase = async () => {
         is_checked  INTEGER DEFAULT 0
       )`
     },
+    // Metas Financeiras / Caixinhas
+    {
+      sql: `CREATE TABLE IF NOT EXISTS savings_goals (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        title         TEXT NOT NULL,
+        target_amount REAL NOT NULL,
+        current_amount REAL DEFAULT 0,
+        color         TEXT DEFAULT '#6C5CE7',
+        category      TEXT DEFAULT 'Geral',
+        created_at    TEXT DEFAULT (datetime('now', 'localtime'))
+      )`
+    },
   ]);
 
   // --- Migration: adiciona coluna 'name' se não existir ---

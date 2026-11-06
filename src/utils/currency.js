@@ -6,16 +6,19 @@
  * Formata um número como moeda BRL (R$).
  * @param {number} value
  * @param {boolean} showSign - se true, adiciona + para positivos
+ * @param {boolean} hide - se true, mascara como R$ ••••• (modo privacidade)
  * @returns {string}
  */
-export const formatCurrency = (value, showSign = false) => {
+export const formatCurrency = (value, showSign = false, hide = false) => {
+  if (hide) return 'R$ •••••';
+  const num = Number(value) || 0;
   const formatted = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(Math.abs(value));
+  }).format(Math.abs(num));
 
-  if (showSign && value > 0) return `+${formatted}`;
-  if (value < 0) return `-${formatted}`;
+  if (showSign && num > 0) return `+${formatted}`;
+  if (num < 0) return `-${formatted}`;
   return formatted;
 };
 
