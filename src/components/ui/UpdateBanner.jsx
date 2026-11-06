@@ -52,3 +52,4 @@ const UpdateBanner = ({ update, onDismiss }) => {
 };
 
 export default UpdateBanner;
+

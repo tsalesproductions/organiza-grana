@@ -1,12 +1,29 @@
 /**
  * OrganizaGrana — Serviço de Atualização via GitHub Releases API
- * Verifica se há novas versões disponíveis no repositório oficial:
- * https://github.com/tsalesproductions/organiza-grana
+ * Obtém a versão dinamicamente via plugin nativo do Cordova (config.xml) ou do package.json.
  */
+import packageJson from '../../package.json';
 
-export const CURRENT_APP_VERSION = '1.1.0';
 const GITHUB_REPO = 'tsalesproductions/organiza-grana';
 const API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+
+/**
+ * Obtém a versão atual do app dinamicamente:
+ * 1. Tenta via plugin nativo Cordova (lê do config.xml no Android/iOS)
+ * 2. Fallback direto do package.json (dev/web)
+ * @returns {Promise<string>}
+ */
+export const getAppVersion = () => {
+  return new Promise((resolve) => {
+    if (window.cordova?.getAppVersion) {
+      window.cordova.getAppVersion.getVersionNumber()
+        .then((version) => resolve(version || packageJson.version))
+        .catch(() => resolve(packageJson.version));
+    } else {
+      resolve(packageJson.version || '1.0.0');
+    }
+  });
+};
 
 /**
  * Compara duas versões SemVer (ex: "1.2.0" vs "1.1.0" ou "v1.2.1" vs "v1.2.0").
@@ -49,6 +66,8 @@ export const openExternalUrl = (url) => {
  */
 export const checkForAppUpdate = async (force = false) => {
   try {
+    const currentVersion = await getAppVersion();
+
     // Throttle: evita bater na API mais de 1x a cada 30 minutos
     const lastCheckStr = localStorage.getItem('og_last_update_check');
     const now = Date.now();
@@ -79,8 +98,8 @@ export const checkForAppUpdate = async (force = false) => {
     const latestTag = release.tag_name;
     const cleanLatest = latestTag.replace(/^v/i, '');
 
-    // Verifica se a versão do GitHub é estritamente maior que a atual
-    if (compareVersions(cleanLatest, CURRENT_APP_VERSION) > 0) {
+    // Compara a versão do GitHub dinamicamente com a versão atual do app
+    if (compareVersions(cleanLatest, currentVersion) > 0) {
       // Verifica se o usuário já dispensou essa versão específica
       const dismissed = localStorage.getItem('og_dismissed_update_version');
       if (!force && dismissed === cleanLatest) {
@@ -95,7 +114,7 @@ export const checkForAppUpdate = async (force = false) => {
       return {
         hasUpdate: true,
         latestVersion: cleanLatest,
-        currentVersion: CURRENT_APP_VERSION,
+        currentVersion,
         releaseUrl: release.html_url,
         downloadUrl: apkAsset ? apkAsset.browser_download_url : release.html_url,
         releaseName: release.name || latestTag,

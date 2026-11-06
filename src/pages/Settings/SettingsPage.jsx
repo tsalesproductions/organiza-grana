@@ -12,12 +12,13 @@ import { exportDatabaseBackup, importDatabaseBackup } from '../../services/backu
 import { getTransactionsByMonth, getMonthSummary } from '../../services/transactions.js';
 import { getCurrentMonthYear, formatMonthYear } from '../../utils/dates.js';
 import PDFReportModal from '../../components/reports/PDFReportModal.jsx';
-import { CURRENT_APP_VERSION, checkForAppUpdate, openExternalUrl } from '../../services/updateService.js';
+import { getAppVersion, checkForAppUpdate, openExternalUrl } from '../../services/updateService.js';
 import './SettingsPage.css';
 
 const SettingsPage = () => {
   const { showToast } = useApp();
   const [activeSection, setActiveSection] = useState(null); // null | 'categories' | 'notifications' | 'user'
+  const [appVersion, setAppVersion] = useState('');
 
   // PDF Report Modal State
   const [pdfReportData, setPdfReportData] = useState(null);
@@ -63,6 +64,7 @@ const SettingsPage = () => {
     loadUser();
     loadCategories();
     loadNotifConfig();
+    getAppVersion().then(setAppVersion);
   }, []);
 
   // ---- Handlers de usuário ----
@@ -491,7 +493,7 @@ const SettingsPage = () => {
                 <div className="og-settings-item__icon">📱</div>
                 <div>
                   <p className="og-settings-item__title">OrganizaGrana</p>
-                  <p className="og-settings-item__subtitle">Versão {CURRENT_APP_VERSION}</p>
+                  <p className="og-settings-item__subtitle">Versão {appVersion || '...'}</p>
                 </div>
               </div>
             </div>
@@ -506,7 +508,7 @@ const SettingsPage = () => {
                     openExternalUrl(update.downloadUrl || update.releaseUrl);
                   }
                 } else {
-                  showToast(`Você já está na versão mais recente (v${CURRENT_APP_VERSION})!`, 'success');
+                  showToast(`Você já está na versão mais recente (v${appVersion})!`, 'success');
                 }
               }}
             >
