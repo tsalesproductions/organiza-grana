@@ -228,7 +228,11 @@ const AIImportSheet = ({ onClose, onSave }) => {
       setReviewItems(enriched);
       setStep(STEP_REVIEW);
     } catch (err) {
-      setErrorMsg(err.message || 'Ocorreu um erro inesperado.');
+      console.error('[AIImportSheet] Erro ao analisar:', err);
+      const msg = typeof err === 'string'
+        ? err
+        : err?.message || (err && typeof err === 'object' && Object.keys(err).length > 0 ? JSON.stringify(err) : 'Ocorreu um erro ao analisar a imagem.');
+      setErrorMsg(msg);
       setStep(STEP_INPUT);
     }
   }, [images, transactionType, observations]);

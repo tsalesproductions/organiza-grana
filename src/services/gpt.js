@@ -5,6 +5,7 @@
  * e fornecendo diagnóstico crítico do orçamento financeiro (Coach IA).
  */
 import { getUserConfig } from './user.js';
+import { optimizeImageForVision } from '../utils/imageOptimizer.js';
 
 /** Converte File/Blob em base64 */
 const fileToBase64 = (file) =>
@@ -49,11 +50,10 @@ export const analyzeImagesWithGPT = async (
     throw new Error('Integração com GPT está desativada. Ative em Configurações → Integração com IA.');
   }
 
-  // Converte todas as imagens para base64
+  // Otimiza e converte todas as imagens para JPEG comprimido (máx 1400px)
   const imageContents = await Promise.all(
     imageFiles.map(async (file) => {
-      const base64 = await fileToBase64(file);
-      const mimeType = file.type || 'image/jpeg';
+      const { base64, mimeType } = await optimizeImageForVision(file, 1400, 0.82);
       return {
         type: 'image_url',
         image_url: {
@@ -161,32 +161,46 @@ Regras importantes:
     ],
   };
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${userConfig.gpt_api_key}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  let response;
+  try {
+    response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${userConfig.gpt_api_key}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (netErr) {
+    console.error('[GPT Vision] Erro de rede:', netErr);
+    throw new Error('Falha de conexão com a OpenAI. Verifique sua conexão com a internet.');
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const msg = errorData?.error?.message || `Erro HTTP ${response.status}`;
+    const msg = errorData?.error?.message || `Erro HTTP ${response.status} na API da OpenAI`;
     throw new Error(`Erro na API do GPT: ${msg}`);
   }
 
   const result = await response.json();
   const content = result?.choices?.[0]?.message?.content || '';
 
-  // Parse do JSON retornado pela IA
+  // Parse resiliente do JSON retornado pela IA (extrai blocos json ou arrays)
   let parsed;
   try {
-    const cleaned = content.replace(/```json|```/g, '').trim();
+    let cleaned = content.trim();
+    if (cleaned.includes('```')) {
+      const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+      if (codeBlockMatch) cleaned = codeBlockMatch[1].trim();
+    }
+    const bracketMatch = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+    if (bracketMatch) {
+      cleaned = bracketMatch[0].trim();
+    }
     parsed = JSON.parse(cleaned);
   } catch (err) {
-    console.error('[GPT Service] Falha ao parsear retorno:', content);
-    throw new Error('A IA retornou um formato inesperado. Tente novamente.');
+    console.error('[GPT Service] Falha ao parsear retorno:', content, err);
+    throw new Error('A IA não conseguiu estruturar os dados da imagem. Tente tirar uma foto mais nítida.');
   }
 
   if (parsed?.error) {
